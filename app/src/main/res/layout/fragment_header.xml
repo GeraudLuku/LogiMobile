@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    tools:context=".Stories.HeaderFragment">
+
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:padding="5dp">
+
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/add_status_image"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_margin="8dp"
+            android:padding="5dp"
+            android:src="@drawable/noimage" />
+
+        <TextView
+            android:id="@+id/add_status_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignTop="@+id/add_status_button"
+            android:layout_centerHorizontal="true"
+            android:text="Ativities :>"
+            android:textSize="18sp" />
+
+        <ImageButton
+            android:id="@+id/add_status_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="46dp"
+            android:layout_marginEnd="25dp"
+            android:background="@color/cardview_light_background"
+            android:src="@android:drawable/ic_menu_add" />
+
+    </RelativeLayout>
+
+
+</FrameLayout>

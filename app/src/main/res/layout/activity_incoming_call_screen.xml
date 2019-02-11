@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:id="@+id/call_image"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="65dp"
+        android:padding="5dp"
+        android:src="@color/alice_blue" />
+
+    <TextView
+        android:id="@+id/remoteUserName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="239dp"
+        android:padding="5dp"
+        android:text="Caller Name"
+        android:textSize="20sp" />
+
+    <Button
+        android:id="@+id/hangupButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="58dp"
+        android:layout_toStartOf="@+id/remoteUserName"
+        android:padding="5dp"
+        android:text="Decline" />
+
+    <Button
+        android:id="@+id/call_accept"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/hangupButton"
+        android:layout_toEndOf="@+id/remoteUserName"
+        android:padding="5dp"
+        android:text="Accept" />
+</RelativeLayout>

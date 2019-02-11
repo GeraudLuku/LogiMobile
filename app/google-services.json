@@ -1,0 +1,59 @@
+{
+  "project_info": {
+    "project_number": "481062136642",
+    "firebase_url": "https://gps-location1.firebaseio.com",
+    "project_id": "gps-location1",
+    "storage_bucket": "gps-location1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:481062136642:android:2afa65a03ceb4928",
+        "android_client_info": {
+          "package_name": "com.geraud.android.gps1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "481062136642-fb2dev45sj1plg1icvuglsbjqjrclmpg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.geraud.android.gps1",
+            "certificate_hash": "4ee3c70047bbf6ac2ef5f14468d6f3e01ae53d68"
+          }
+        },
+        {
+          "client_id": "481062136642-65paf696av4tftnurq2m5sicnm4dc2ek.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "481062136642-65paf696av4tftnurq2m5sicnm4dc2ek.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDxlkMETRKqGZFg9Xc6nt8ZWaajw-qZ2MA"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "481062136642-65paf696av4tftnurq2m5sicnm4dc2ek.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

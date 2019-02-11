@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:padding="16dp">
+
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:id="@+id/place_image"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        tools:src="@android:drawable/ic_input_add" />
+
+    <EditText
+        android:background="@drawable/edittext"
+        android:padding="10dp"
+        android:id="@+id/place_name"
+        android:layout_width="250dp"
+        android:layout_centerHorizontal="true"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/place_image"
+        android:layout_marginTop="26dp"
+        android:hint="@string/name" />
+
+    <EditText
+        android:background="@drawable/edittext"
+        android:padding="10dp"
+        android:id="@+id/place_description"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/place_name"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="26dp"
+        android:hint="@string/what_is_the_place_about" />
+
+    <Spinner
+        android:id="@+id/place_spinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/place_description"
+        android:layout_centerHorizontal="true"
+        android:popupBackground = "@color/colorAccent"
+        android:layout_marginTop="25dp" />
+
+</RelativeLayout>
