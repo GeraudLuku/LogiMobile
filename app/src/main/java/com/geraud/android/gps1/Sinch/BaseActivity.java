@@ -6,6 +6,7 @@ import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
+import android.widget.Toast;
 
 import com.geraud.android.gps1.Services.SinchService;
 
@@ -24,6 +25,7 @@ public abstract class BaseActivity extends AppCompatActivity implements ServiceC
         if (SinchService.class.getName().equals(componentName.getClassName())) {
             mSinchServiceInterface = (SinchService.SinchServiceInterface) iBinder;
             onServiceConnected();
+            Toast.makeText(this, "Sinch Service Connected", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -32,6 +34,7 @@ public abstract class BaseActivity extends AppCompatActivity implements ServiceC
         if (SinchService.class.getName().equals(componentName.getClassName())) {
             mSinchServiceInterface = null;
             onServiceDisconnected();
+            Toast.makeText(this, "Sinch Service Failed", Toast.LENGTH_SHORT).show();
         }
     }
 

@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="300dp"
     android:layout_height="wrap_content"
-    android:background="@android:color/white"
+    android:background="@drawable/info_window"
     android:padding="10dp">
 
     <de.hdodenhof.circleimageview.CircleImageView
@@ -20,31 +21,32 @@
         android:id="@+id/infowindow_people_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_marginEnd="70dp"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="123dp"
         android:layout_marginBottom="12dp"
-        android:text="Name Of Person Or Place"
+        android:maxLength="20"
         android:textSize="16sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="Loraine Pinkette" />
 
     <TextView
         android:id="@+id/infowindow_people_snippet"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/infowindow_people_name"
-        android:layout_alignParentEnd="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="24dp"
-        android:layout_marginEnd="204dp"
-        android:maxLines="10"
-        android:nestedScrollingEnabled="true"
-        android:textStyle="italic" />
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="154dp"
+        android:layout_marginTop="82dp"
+        tools:text="ONLINE" />
+
 
     <ImageView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_marginStart="24dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="243dp"
+        android:layout_marginTop="76dp"
         android:src="@drawable/options" />
 
 </RelativeLayout>

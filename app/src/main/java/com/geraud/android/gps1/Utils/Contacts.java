@@ -46,7 +46,7 @@ public class Contacts {
         cursor.moveToFirst();
         while (cursor.moveToNext()) {
 
-            String name = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
+            //String name = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
 
             String phone = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
             phone = phone.replace(" ", "");
@@ -57,21 +57,21 @@ public class Contacts {
             if (!String.valueOf(phone.charAt(0)).equals("+")) //if the phone number doesnt have a country code then automatically the number is in your country
                 phone = ISOPrefix + phone;
 
-            getUserDetails(phone);
+            checkIfUsesApp(phone);
             cursor.moveToNext();
         }
         cursor.close();
         return mContacts;
     }
 
-    private void getUserDetails(final String phonenumber) {
+    private void checkIfUsesApp(final String phone) {
         //get the mContacts from firebase
-        Query query = mDatabaseReference.child("USER").orderByChild("phone").equalTo(phonenumber);
+        Query query = mDatabaseReference.child("USER").orderByChild("phone").equalTo(phone);
         query.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists())
-                    mContacts.add(phonenumber);
+                    mContacts.add(phone);
             }
 
             @Override

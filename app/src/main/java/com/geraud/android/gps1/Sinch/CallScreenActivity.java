@@ -26,7 +26,7 @@ import java.util.TimerTask;
 
 public class CallScreenActivity extends BaseActivity {
 
-    static final String TAG = CallScreenActivity.class.getSimpleName();
+    private static final String TAG = CallScreenActivity.class.getSimpleName();
 
     private AudioPlayer mAudioPlayer;
     private Timer mTimer;
@@ -48,11 +48,11 @@ public class CallScreenActivity extends BaseActivity {
         setContentView(R.layout.activity_call_screen);
 
         mAudioPlayer = new AudioPlayer(this);
-        mCallDuration = (TextView) findViewById(R.id.callDuration);
-        mCallerName = (TextView) findViewById(R.id.remoteUserName);
+        mCallDuration = findViewById(R.id.callDuration);
+        mCallerName = findViewById(R.id.remoteUserName);
         mCallerImage = findViewById(R.id.remoteUserImage);
-        mCallState = (TextView) findViewById(R.id.callState);
-        Button endCallButton = (Button) findViewById(R.id.hangupButton);
+        mCallState = findViewById(R.id.callState);
+        Button endCallButton = findViewById(R.id.hangupButton);
 
         endCallButton.setOnClickListener(new OnClickListener() {
             @Override

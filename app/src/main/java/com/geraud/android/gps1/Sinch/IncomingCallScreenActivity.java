@@ -27,6 +27,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
     private String mCallName;
     private String mCallImage;
     private AudioPlayer mAudioPlayer;
+
     private OnClickListener mClickListener = new OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -52,9 +53,9 @@ public class IncomingCallScreenActivity extends BaseActivity {
         mCallName = getIntent().getStringExtra(SinchService.CALL_NAME);
         mCallImage = getIntent().getStringExtra(SinchService.CALL_IMAGE);
 
-        Button answer = (Button) findViewById(R.id.call_accept);
+        Button answer = findViewById(R.id.call_accept);
+        Button decline = findViewById(R.id.hangupButton);
         answer.setOnClickListener(mClickListener);
-        Button decline = (Button) findViewById(R.id.hangupButton);
         decline.setOnClickListener(mClickListener);
 
     }

@@ -55,7 +55,7 @@ public class BodyFragment extends Fragment {
         recyclerView.setAdapter(storiesRecyclerAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
-        //cycle via all friends and get thier stories with a childEventListener
+        //cycle via all mContactList and get thier stories with a childEventListener
         for (String user : contacts.getAllContacts()) {
 
             mDatabase.child(user).addValueEventListener(new ValueEventListener() {

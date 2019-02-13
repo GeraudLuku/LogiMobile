@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/chatMenuBtn"
+        android:icon="@drawable/chat_btn"
+        android:title="Chat" />
+    <item
+        android:id="@+id/gotoMenuBtn"
+        android:icon="@drawable/direction_btn"
+        android:title="GO-TO" />
+    <item
+        android:id="@+id/callMenuBtn"
+        android:icon="@drawable/call_btn"
+        android:title="Call" />
+</menu>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/gotoMenuBtn"
+        android:icon="@drawable/direction_btn"
+        android:title="GO-TO" />
+
+</menu>

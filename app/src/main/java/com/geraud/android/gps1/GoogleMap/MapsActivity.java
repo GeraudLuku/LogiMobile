@@ -8,10 +8,10 @@ import android.content.Intent;
 import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
@@ -25,6 +25,7 @@ import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -53,8 +54,8 @@ import com.directions.route.RoutingListener;
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.geraud.android.gps1.Dailogs.AddPlace;
-import com.geraud.android.gps1.InfoWindow.InfoWindow_People;
-import com.geraud.android.gps1.InfoWindow.InfoWindow_Places;
+import com.geraud.android.gps1.InfoWindow.PeopleMarkerInfoWindow;
+import com.geraud.android.gps1.InfoWindow.PlacesMarkerInfoWindow;
 import com.geraud.android.gps1.Models.GeoFence;
 import com.geraud.android.gps1.Models.Place;
 import com.geraud.android.gps1.Models.User;
@@ -66,6 +67,7 @@ import com.geraud.android.gps1.Sinch.CallScreenActivity;
 import com.geraud.android.gps1.Stories.BodyFragment;
 import com.geraud.android.gps1.Stories.HeaderFragment;
 import com.geraud.android.gps1.Utils.Contacts;
+import com.geraud.android.gps1.Utils.PlacesTypeToDrawable;
 import com.geraud.android.gps1.Utils.RandomStringGenerator;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -104,6 +106,8 @@ import com.google.gson.Gson;
 import com.sinch.android.rtc.SinchError;
 import com.sinch.android.rtc.calling.Call;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -115,29 +119,26 @@ import es.dmoral.toasty.Toasty;
 
 public class MapsActivity extends BaseActivity implements
         SinchService.StartFailedListener,
-        RoutingListener,
         AddPlace.AddPlaceListener {
 
 
-    public static final int REQUEST_PERMISSION_CODE = 1;
-    public static final int REQUEST_CHECK_SETTINGS = 123;
-    public List<String> friends;
-    GoogleApiClient mGoogleApiClient;
+    private static final int REQUEST_PERMISSION_CODE = 1;
+    private static final int READ_CONTACT_PERMISSION_REQUEST = 12;
+    private static final int REQUEST_CHECK_SETTINGS = 123;
+    private static final String POPUP_CONSTANT = "mPopup";
+    private static final String POPUP_FORCE_SHOW_ICON = "setForceShowIcon";
 
-    int INTERVAL = 10000;
-    int FASTEST_INTERVAL = 5000;
-    FloatingActionButton currentLocationBtn;
-    FloatingActionButton cancelRoute;
+
+
+
     LinearLayout tapactionlayout;
     View bottomSheet;
-    EditText searchbar;
+    private EditText mSearchBar;
 
-    ImageView profile_pic;
-    TextView profile_name;
+
     int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
     //for creating random colors for geofences
     Random rnd = new Random();
-    TSnackbar snackbar;
     SeekBar verticalSeekBar;
 
     private FirebaseAuth mFirebaseAuth;
@@ -149,16 +150,15 @@ public class MapsActivity extends BaseActivity implements
     Marker mFriends;
     Marker mMarkerData;
     Circle mGeoBoundary;
-    LatLng mMarkerClickLatLng;
+
     boolean showGeofences = true;
     private HeaderFragment StoryHeaderFragment;
     private BodyFragment StoryBodyFragment;
     private GoogleMap mMap;
-    //Google ApiClient
-    private GoogleApiClient googleApiClient;
+
     private String TAG = "gps";
-    private BottomSheetBehavior mBottomSheetBehavior1;
-    private List<Polyline> polylines;
+    private BottomSheetBehavior mBottomSheetBehavior;
+
     private Gson gson = new Gson();
     private ActionBarDrawerToggle toggle;
 
@@ -229,32 +229,51 @@ public class MapsActivity extends BaseActivity implements
 
         mDatabaseReference = FirebaseDatabase.getInstance().getReference();
         mStorageReference = FirebaseStorage.getInstance().getReference();
+        mSearchRef = FirebaseDatabase.getInstance().getReference().child("PLACES"); //by default
         mFirebaseAuth = FirebaseAuth.getInstance();
         USER_KEY = mFirebaseAuth.getCurrentUser().getPhoneNumber();
 
-        profile_pic = findViewById(R.id.bottomSheet_Image);
-        profile_name = findViewById(R.id.bottomSheet_Name);
-        currentLocationBtn = findViewById(R.id.fab);
-        cancelRoute = findViewById(R.id.cancelRoute);
+        mProfilePicture = findViewById(R.id.bottomSheet_Image);
+        mProfileName = findViewById(R.id.bottomSheet_Name);
+
+        mGetCurrentLocationBtn = findViewById(R.id.fab);
+        mGetCurrentLocationBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getCurrentLocation();
+            }
+        });
+
+        mCancelRouteBtn = findViewById(R.id.cancelRoute);   //cancel directions API polyline route(s)
+        mCancelRouteBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                eraseAllRouteLines();
+                //mCancelRouteBtn.setVisibility(View.GONE);
+                Toasty.info(getApplicationContext(), "Route cancelled", 1000, true).show();
+            }
+        });
+
+
         tapactionlayout = findViewById(R.id.tap_action_layout);
-        searchbar = findViewById(R.id.search_text);
+        mSearchBar = findViewById(R.id.search_text);
         mGeoFire = new GeoFire(FirebaseDatabase.getInstance().getReference("LOCATION"));
 
         bottomSheet = findViewById(R.id.bottom_sheet1);
-        mBottomSheetBehavior1 = BottomSheetBehavior.from(bottomSheet);
-        mBottomSheetBehavior1.setPeekHeight(120);
-        mBottomSheetBehavior1.setState(BottomSheetBehavior.STATE_HIDDEN);
-        mBottomSheetBehavior1.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
+        mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+        mBottomSheetBehavior.setPeekHeight(20);
+        mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+        mBottomSheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View bottomSheet, int newState) {
                 if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
                     tapactionlayout.setVisibility(View.VISIBLE);
-                    mBottomSheetBehavior1.setState(BottomSheetBehavior.STATE_COLLAPSED);
+                    mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
                 }
 
                 if (newState == BottomSheetBehavior.STATE_EXPANDED) {
                     tapactionlayout.setVisibility(View.GONE);
-                    mBottomSheetBehavior1.setState(BottomSheetBehavior.STATE_EXPANDED);
+                    mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 }
 
                 if (newState == BottomSheetBehavior.STATE_DRAGGING) {
@@ -262,8 +281,8 @@ public class MapsActivity extends BaseActivity implements
                 }
                 if (newState == BottomSheetBehavior.STATE_HIDDEN) {
                     tapactionlayout.setVisibility(View.GONE);
-                    mBottomSheetBehavior1.setState(BottomSheetBehavior.STATE_HIDDEN);
-                    mBottomSheetBehavior1.setPeekHeight(0);
+                    mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+                    mBottomSheetBehavior.setPeekHeight(0);
                 }
 
             }
@@ -274,8 +293,8 @@ public class MapsActivity extends BaseActivity implements
             }
         });
 
-        //start polylines
-        polylines = new ArrayList<>();
+        //start mPolyLines
+        mPolyLines = new ArrayList<>();
 
         //chats button pressed
         findViewById(R.id.chats).setOnClickListener(new View.OnClickListener() {
@@ -312,8 +331,8 @@ public class MapsActivity extends BaseActivity implements
         tapactionlayout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mBottomSheetBehavior1.getState() == BottomSheetBehavior.STATE_COLLAPSED) {
-                    mBottomSheetBehavior1.setState(BottomSheetBehavior.STATE_EXPANDED);
+                if (mBottomSheetBehavior.getState() == BottomSheetBehavior.STATE_COLLAPSED) {
+                    mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 }
             }
         });
@@ -334,24 +353,24 @@ public class MapsActivity extends BaseActivity implements
         toggle.syncState();
 
         //toggle search button to toggle the type of item to search on the map
-        final ToggleButton toggleSearch = (ToggleButton) toolbar.findViewById(R.id.toggle_search);
-        toggleSearch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        final ToggleButton mToggleSearchBtn = toolbar.findViewById(R.id.toggle_search);
+        mToggleSearchBtn.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
                     //change search to Users
-                    mSearchRef = FirebaseDatabase.getInstance().getReference().child("user");
-                    toggleSearch.setText("Places");
+                    mSearchRef = FirebaseDatabase.getInstance().getReference().child("USER");
+                    mToggleSearchBtn.setText("L");
                 } else {
                     //change search to Places
-                    mSearchRef = FirebaseDatabase.getInstance().getReference().child("places");
-                    toggleSearch.setText("Users");
+                    mSearchRef = FirebaseDatabase.getInstance().getReference().child("PLACES");
+                    mToggleSearchBtn.setText("P");
                 }
             }
         });
 
         //listen constantly to changes in text to the editText
-        searchbar.addTextChangedListener(new TextWatcher() {
+        mSearchBar.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
                 //do nothing if there is no text in the edit Text
@@ -360,39 +379,17 @@ public class MapsActivity extends BaseActivity implements
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 //constantly search on each key stroke
-                String text = s.toString();
-                Search(text);
+                Search(s.toString());
             }
 
             @Override
             public void afterTextChanged(Editable s) {
                 //search the final text in the edit Text
-                String text = s.toString();
-                Search(text);
+                Search(s.toString());
             }
         });
-
 
         mapFragment.getMapAsync(mMapReadyCallback);
-
-        //goto users current location in app
-        currentLocationBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                getCurrentLocation();
-            }
-        });
-
-        //cancel directions API polyline route(s)
-        cancelRoute.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                eraseAllRouteLines();
-                //cancelRoute.setVisibility(View.GONE);
-                Toasty.info(getApplicationContext(), "Route cancelled", 1000, true).show();
-            }
-        });
-
         //get search text and search on the map
         //findViewById(R.id.search)
 
@@ -416,19 +413,18 @@ public class MapsActivity extends BaseActivity implements
         }
     }
 
+
+    public List<String> mContactList = new ArrayList<>();
+
     @Override
     protected void onStart() {
-
-        googleApiClient.connect();
-        //do some actions here.....
-        //first get all contacts
-        Contacts contacts = new Contacts(this);
-        friends = contacts.getAllContacts();
-        //load user information
+        mGoogleApiClient.connect();
+        loadContacts();
         UserDetails();
         makeUserOnline();
         super.onStart();
     }
+
 
     @Override
     protected void onResume() {
@@ -445,7 +441,7 @@ public class MapsActivity extends BaseActivity implements
 
     @Override
     protected void onStop() {
-        googleApiClient.disconnect();
+        mGoogleApiClient.disconnect();
         makeUserOffline();
         super.onStop();
     }
@@ -455,7 +451,7 @@ public class MapsActivity extends BaseActivity implements
         if (getSinchServiceInterface() != null) {
             getSinchServiceInterface().stopClient();
         }
-        if (mServiceIsBound){
+        if (mServiceIsBound) {
             unbindService(mServiceConnection);
             mServiceIsBound = false;
         }
@@ -477,6 +473,9 @@ public class MapsActivity extends BaseActivity implements
         }
     };
 
+
+    private int INTERVAL = 10000;
+    private int FASTEST_INTERVAL = 5000;
     //all related map actions take place here
     private OnMapReadyCallback mMapReadyCallback = new OnMapReadyCallback() {
         @Override
@@ -488,8 +487,6 @@ public class MapsActivity extends BaseActivity implements
             mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
             mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
-            bindService(new Intent(getApplicationContext(), GeoQueries.class), mServiceConnection, BIND_AUTO_CREATE);
-            mServiceIsBound = true;
 
             getCurrentLocation();
             LoadPlaces();
@@ -504,6 +501,7 @@ public class MapsActivity extends BaseActivity implements
 
             if (checkPermission()) {
                 buildGoogleApiClient();
+                mMap.setMyLocationEnabled(true);
                 // Check the location settings of the user and create the callback to react to the different possibilities
                 LocationSettingsRequest.Builder locationSettingsRequestBuilder = new LocationSettingsRequest.Builder()
                         .addLocationRequest(mLocationRequest);
@@ -515,7 +513,6 @@ public class MapsActivity extends BaseActivity implements
             }
         }
     };
-
 
 
     private void requestPermission() {
@@ -540,16 +537,24 @@ public class MapsActivity extends BaseActivity implements
                     boolean coarselocation = grantResults[1] == PackageManager.PERMISSION_GRANTED;
 
                     if (finelocation && coarselocation) {
-
-                        if (checkPermission())
+                        if (checkPermission()) {
                             buildGoogleApiClient();
+                            mMap.setMyLocationEnabled(true);
+                        }
                         Toast.makeText(MapsActivity.this, "Permission Granted", Toast.LENGTH_LONG).show();
                     } else {
                         Toast.makeText(MapsActivity.this, "Permission Denied", Toast.LENGTH_LONG).show();
 
                     }
                 }
-
+                break;
+            case READ_CONTACT_PERMISSION_REQUEST:
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    mContactList = new Contacts(getApplicationContext()).getAllContacts();
+                    bindService(new Intent(getApplicationContext(), GeoQueries.class), mServiceConnection, BIND_AUTO_CREATE);
+                    mServiceIsBound = true;
+                } else
+                    Toast.makeText(getApplicationContext(), "App requires contact to work", Toast.LENGTH_SHORT).show();
                 break;
         }
     }
@@ -564,6 +569,9 @@ public class MapsActivity extends BaseActivity implements
 
     }
 
+
+    private GoogleApiClient mGoogleApiClient;
+
     protected synchronized void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addConnectionCallbacks(mGoogleApiClientConnectionCallbacks)
@@ -573,10 +581,22 @@ public class MapsActivity extends BaseActivity implements
         mGoogleApiClient.connect();
     }
 
+    private void loadContacts() {
+        //check if contacts permission was accepted
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                mContactList = new Contacts(getApplicationContext()).getAllContacts();
+                bindService(new Intent(getApplicationContext(), GeoQueries.class), mServiceConnection, BIND_AUTO_CREATE);
+                mServiceIsBound = true;
+            } else {
+                requestPermissions(new String[]{Manifest.permission.READ_CONTACTS}, READ_CONTACT_PERMISSION_REQUEST);
+            }
+        }
 
+    }
 
     private Location mLastLocation;
-    private Marker mUserMarker;
+    //    private Marker mUserMarker;
     private GeoFire mGeoFire;
     private LocationListener mLocationListener = new LocationListener() {
         @Override
@@ -584,15 +604,15 @@ public class MapsActivity extends BaseActivity implements
             mLastLocation = location;
             LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
 
-            //update marker on screen
-            if (mUserMarker != null) mUserMarker.remove();
-
-            mUserMarker = mMap.addMarker(new MarkerOptions()
-                    .position(latLng) //setting position
-                    .draggable(false) //Making the marker non draggable
-                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.rsz_personal_avatar)) //icon image here i am going to put the users bitmojii
-                    .title("Me")); //Adding my name as title
-
+//            //update marker on screen
+//            if (mUserMarker != null) mUserMarker.remove();
+//
+//            mUserMarker = mMap.addMarker(new MarkerOptions()
+//                    .position(latLng) //setting position
+//                    .draggable(false) //Making the marker non draggable
+//                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.rsz_personal_avatar)) //icon image here i am going to put the users bitmojii
+//                    .title("Me")); //Adding my name as title
+//
             mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
             mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
 
@@ -680,63 +700,133 @@ public class MapsActivity extends BaseActivity implements
     };
 
 
+    private LatLng mMarkerClickLatLng;
     private GoogleMap.OnMarkerClickListener mOnMarkerClickListener = new GoogleMap.OnMarkerClickListener() {
         @Override
         public boolean onMarkerClick(Marker marker) {
-            boolean clicked = false;
-
             //markers latitude and longitude
             mMarkerClickLatLng = marker.getPosition();
-            //get marker GSON objet from the snippet
+            //get marker GSON object from the snippet
             mMarkerData = marker;
 
-            if (marker.getTitle().equals("USER")) {
+            if (marker.getTitle().equals("user")) {
                 //set the custom info window adapter
-                mMap.setInfoWindowAdapter(new InfoWindow_People(MapsActivity.this));
+                mMap.setInfoWindowAdapter(new PeopleMarkerInfoWindow(MapsActivity.this));
                 mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
                     @Override
                     public void onInfoWindowClick(Marker marker) {
                         //here i will show the various options to do on the maker
-                        peopleMenu();
+                        peopleMenu(marker);
                     }
                 });
-                clicked = true;
-            } else if (marker.getTitle().equals("PLACE")) {
+            } else if (marker.getTitle().equals("place")) {
                 //set the custom info window adapter
-                mMap.setInfoWindowAdapter(new InfoWindow_Places(MapsActivity.this));
+                mMap.setInfoWindowAdapter(new PlacesMarkerInfoWindow(MapsActivity.this));
                 mMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
                     @Override
                     public void onInfoWindowClick(Marker marker) {
                         //here i will show the various options to do on the maker
-                        placeMenu();
+                        placeMenu(marker);
                     }
                 });
-                clicked = true;
             }
             //else if its my marker (my location) so as not to cause a NUllPointer Exception ;)
-            else if (marker.getTitle().equals("Me")) {
-                Toasty.normal(getApplicationContext(), "Me", 1000).show();
-            }
-            return clicked; //return false else it wont work dont know why tho
+            else
+                Toast.makeText(getApplicationContext(), "My Marker", Toast.LENGTH_SHORT).show();
+
+            return false;
         }
     };
 
+    private PopupMenu.OnMenuItemClickListener mMenuItemClickListener = new PopupMenu.OnMenuItemClickListener() {
+        @Override
+        public boolean onMenuItemClick(MenuItem menuItem) {
+            switch (menuItem.getItemId()) {
+                case R.id.chatMenuBtn:
+                    //startActivity(new Intent(getApplicationContext(), ChatUsersActivity.class));
+                case R.id.gotoMenuBtn:
+                    drawRoute(mMarkerClickLatLng);
+                    break;
+                case R.id.callMenuBtn:
+                    call(mMarkerData);
 
-    //Getting current location
+            }
+            return false;
+        }
+    };
+
+    private void peopleMenu(Marker marker) {
+        //i will rather make a pop up menu it will be better for this
+        PopupMenu popup = new PopupMenu(getApplicationContext(), getCurrentFocus());
+        try {
+            // Reflection apis to enforce show icon
+            Field[] fields = popup.getClass().getDeclaredFields();
+            for (Field field : fields) {
+                if (field.getName().equals(POPUP_CONSTANT)) {
+                    field.setAccessible(true);
+                    Object menuPopupHelper = field.get(popup);
+                    Class<?> classPopupHelper = Class.forName(menuPopupHelper.getClass().getName());
+                    Method setForceIcons = classPopupHelper.getMethod(POPUP_FORCE_SHOW_ICON, boolean.class);
+                    setForceIcons.invoke(menuPopupHelper, true);
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        popup.getMenuInflater().inflate(R.menu.info_window_people, popup.getMenu());
+        popup.setOnMenuItemClickListener(mMenuItemClickListener);
+        popup.show();
+    }
+
+    //alert dailog when pressing options on the info window of Places
+    private void placeMenu(Marker marker) {
+        PopupMenu popup = new PopupMenu(getApplicationContext(), getCurrentFocus());
+        try {
+            // Reflection apis to enforce show icon
+            Field[] fields = popup.getClass().getDeclaredFields();
+            for (Field field : fields) {
+                if (field.getName().equals(POPUP_CONSTANT)) {
+                    field.setAccessible(true);
+                    Object menuPopupHelper = field.get(popup);
+                    Class<?> classPopupHelper = Class.forName(menuPopupHelper.getClass().getName());
+                    Method setForceIcons = classPopupHelper.getMethod(POPUP_FORCE_SHOW_ICON, boolean.class);
+                    setForceIcons.invoke(menuPopupHelper, true);
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        popup.getMenuInflater().inflate(R.menu.info_window_places, popup.getMenu());
+        popup.setOnMenuItemClickListener(mMenuItemClickListener);
+        popup.show();
+    }
+
+    /*-------------------------------------------- Map specific functions -----
+    |  Function(s) getCurrentLocation
+    |
+    |  The blue dot and the precision circle are automatically managed by the map and you can't update
+        it or change it's symbology.
+        In fact, it's managed automatically using it's own LocationProvider so it gets the best location resolution available
+        (you don't need to write code to update it, just enable it using mMap.setMyLocationEnabled(true);).
+    |
+    *-------------------------------------------------------------------*/
+    private FloatingActionButton mGetCurrentLocationBtn;
     private void getCurrentLocation() {
 
         if (mLastLocation != null) {
             //moving the map to my  location
             //Creating a LatLng Object to store Coordinates
             LatLng latLng = new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude());
-
-            if (mUserMarker != null) mUserMarker.remove();
-            //Adding marker to map
-            mUserMarker = mMap.addMarker(new MarkerOptions()
-                    .position(latLng) //setting position
-                    .draggable(false) //Making the marker non draggable
-                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.rsz_personal_avatar)) //icon image here i am going to put the users bitmojii
-                    .title("Me")); //Adding my name as title
+//            if (mUserMarker != null)
+//                mUserMarker.remove();
+//            //Adding marker to map
+//            mUserMarker = mMap.addMarker(new MarkerOptions()
+//                    .position(latLng) //setting position
+//                    .draggable(false) //Making the marker non draggable
+//                    //.icon(BitmapDescriptorFactory.fromResource(R.drawable.rsz_personal_avatar)) //icon image here i am going to put the users bitmojii
+//                    .title("Me")); //Adding my name as title
 
             //Moving the camera
             mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
@@ -796,19 +886,20 @@ public class MapsActivity extends BaseActivity implements
     }
 
     //method to load Current user details into dashboard
-    public void UserDetails() {
+    private ImageView mProfilePicture;
+    private TextView mProfileName;
 
-        mDatabaseReference.child("user").child(mFirebaseAuth.getCurrentUser().getPhoneNumber()).addListenerForSingleValueEvent(new ValueEventListener() {  // to get the data only once and remove the listner
+    public void UserDetails() {
+        mDatabaseReference.child("USER").child(USER_KEY).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
                     for (DataSnapshot doc : dataSnapshot.getChildren()) {
-
                         User user = doc.getValue(User.class);
                         Glide.with(getApplicationContext()) //load profile picture
                                 .load(user.getImage_uri())
-                                .into(profile_pic);
-                        profile_name.setText(user.getName());
+                                .into(mProfilePicture);
+                        mProfileName.setText(user.getName());
                     }
                 }
             }
@@ -818,10 +909,10 @@ public class MapsActivity extends BaseActivity implements
                 Toasty.error(getApplicationContext(), "Failed to load your information", 3000).show();
             }
         });
-
     }
 
     private StorageReference mStorageReference;
+
     public void OpenAddPlace() {
 
         AddPlace addPlace = new AddPlace();
@@ -842,7 +933,7 @@ public class MapsActivity extends BaseActivity implements
                     Place place = new Place(name, USER_KEY, description, downloadURI, "place", mClickLatLng.latitude, mClickLatLng.longitude, dec2);
 
                     //create a database entry for the new place
-                    mDatabaseReference.child("places").child(USER_KEY).push().setValue(place).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    mDatabaseReference.child("PLACES").child(USER_KEY).push().setValue(place).addOnCompleteListener(new OnCompleteListener<Void>() {
                         @Override
                         public void onComplete(@NonNull Task<Void> task) {
                             if (task.isSuccessful()) {
@@ -860,6 +951,7 @@ public class MapsActivity extends BaseActivity implements
     }
 
     private Marker mPlaces;
+
     private void LoadPlaces() {
         if (mPlaces != null) mPlaces.remove();
 
@@ -874,10 +966,10 @@ public class MapsActivity extends BaseActivity implements
                         //create JSON object to send the info to infoWindow adapter through the snippet
                         String PlaceJSON = gson.toJson(myPlace);
                         mPlaces = mMap.addMarker(new MarkerOptions()
-                                .position(new LatLng(myPlace.getLatitude(), myPlace.getLongitude())) //convert the lat and long to double
+                                .position(new LatLng(myPlace.getLatitude(), myPlace.getLongitude()))
                                 .title(myPlace.getType())
                                 .snippet(PlaceJSON)
-                                .icon(BitmapDescriptorFactory.fromPath(String.format("R.drawable.%s", myPlace.getDesc2())))
+                                .icon(BitmapDescriptorFactory.fromResource(PlacesTypeToDrawable.getDrawable(myPlace.getDesc2())))
                                 .draggable(false)
                         );
                     }
@@ -890,24 +982,23 @@ public class MapsActivity extends BaseActivity implements
             }
         });
 
-        //now load my friends places also
+        //now load my mContactList places also
         //for each friend
-        for (String friends : friends) {
+        for (String contact : mContactList) {
             //load all places
-            mDatabaseReference.child("places").child(friends).addValueEventListener(new ValueEventListener() {
+            mDatabaseReference.child("PLACES").child(contact).addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     if (dataSnapshot.exists()) {
                         for (DataSnapshot dc : dataSnapshot.getChildren()) {
-
                             Place myPlace = dc.getValue(Place.class);
                             //create JSON object to send the info to infoWindow adapter through the snippet
                             String PlaceExtraInfo = gson.toJson(myPlace);
                             mPlaces = mMap.addMarker(new MarkerOptions()
                                     .position(new LatLng(myPlace.getLatitude(), myPlace.getLongitude())) //convert the lat and long to double
-                                    .title(myPlace.getType().toString())
+                                    .title(myPlace.getType())
                                     .snippet(PlaceExtraInfo)
-                                    .icon(BitmapDescriptorFactory.fromPath(String.format("R.drawable.%s", myPlace.getDesc2())))
+                                    .icon(BitmapDescriptorFactory.fromResource(PlacesTypeToDrawable.getDrawable(myPlace.getDesc2())))
                                     .draggable(false)
                             );
                         }
@@ -925,7 +1016,7 @@ public class MapsActivity extends BaseActivity implements
 
     private void LoadFriends() {
 
-        if (!friends.isEmpty()) {
+        if (!mContactList.isEmpty()) {
             //start a timer to run after 1 second
             new Timer().schedule(new TimerTask() {
                 @Override
@@ -935,9 +1026,9 @@ public class MapsActivity extends BaseActivity implements
                         @Override
                         public void run() {
                             if (mFriends != null) mFriends.remove();
-                            for (final String friends : friends) {
+                            for (final String friends : mContactList) {
 
-                                //first query the users section of the database to get the friends information
+                                //first query the users section of the database to get the mContactList information
                                 mDatabaseReference.child("user").child(friends).addListenerForSingleValueEvent(new ValueEventListener() {
                                     @Override
                                     public void onDataChange(DataSnapshot dataSnapshot) {
@@ -945,7 +1036,7 @@ public class MapsActivity extends BaseActivity implements
                                             for (DataSnapshot dc1 : dataSnapshot.getChildren()) {
                                                 final User user = dc1.getValue(User.class);
                                                 final String friendExtraInfo = gson.toJson(user);
-                                                //second query to get the location to finally display friends location
+                                                //second query to get the location to finally display mContactList location
                                                 mDatabaseReference.child("location").child(friends).child("l").addListenerForSingleValueEvent(new ValueEventListener() {
                                                     @Override
                                                     public void onDataChange(DataSnapshot dataSnapshot) {
@@ -1010,7 +1101,7 @@ public class MapsActivity extends BaseActivity implements
                     loadGeoFences();
                     numGeofences++;
                     Toasty.success(getApplicationContext(), "Geofence created successfully", 2000).show();
-                }else {
+                } else {
                     Toast.makeText(getApplicationContext(), "Couldnt create geoboundary", Toast.LENGTH_SHORT).show();
                 }
             }
@@ -1021,6 +1112,7 @@ public class MapsActivity extends BaseActivity implements
     private int numGeofences = 0;
     private List<LatLng> mGeoLocationsList;
     private GeoQueries mGeoQueriesService;
+
     private void loadGeoFences() {
         mGeoLocationsList = new ArrayList<>();
 
@@ -1055,53 +1147,9 @@ public class MapsActivity extends BaseActivity implements
             }
         });
         //after all the geofences are loaded, start the queries listener service
-        mGeoQueriesService.query(this, mGeoLocationsList, friends);
+        mGeoQueriesService.query(this, mGeoLocationsList, mContactList);
     }
 
-
-    //alert dailog when pressing options on the info window of friends
-    private void peopleMenu() {
-        CharSequence options[] = new CharSequence[]{"Chat", "Go-To", "Poke", "Call"};
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("What Do You Want?");
-        builder.setItems(options, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                // the user clicked on options[which]
-                switch (which) {
-                    case 0:
-                        //startActivity(new Intent(getApplicationContext(), ChatUsersActivity.class));
-                    case 1:
-                        drawRoute(mMarkerClickLatLng);
-                        break;
-                    case 3:
-                        call(mMarkerData);
-                }
-            }
-        });
-        builder.show();
-    }
-
-    //alert dailog when pressing options on the info window of Places
-    private void placeMenu() {
-        CharSequence options[] = new CharSequence[]{"Go-To"};
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("You Want?");
-        builder.setItems(options, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                //if the user presses on GO-TO a route should be created from the user to that position
-                switch (which) {
-                    case 0:
-                        drawRoute(mMarkerClickLatLng);
-                        break;
-                }
-            }
-        });
-        builder.show();
-    }
 
     private void creatorWindow() {
 
@@ -1123,7 +1171,7 @@ public class MapsActivity extends BaseActivity implements
             public void onClick(View v) {
                 if (numGeofences <= 5) {
                     AddGeoBoundary();
-                }else
+                } else
                     Toast.makeText(getApplicationContext(), "Geofence creation exceeded (MAX=5)", Toast.LENGTH_SHORT).show();
             }
         });
@@ -1145,7 +1193,8 @@ public class MapsActivity extends BaseActivity implements
 
                             for (DataSnapshot dc : dataSnapshot.getChildren()) {
 
-                                try { //if the datasnapshot can enter the user object
+                                try {
+                                    //if the datasnapshot can enter the user object
                                     User user = dc.getValue(User.class);
                                     mDatabaseReference.child("location").child(user.getPhone()).child("l").addListenerForSingleValueEvent(new ValueEventListener() {
                                         @Override
@@ -1198,21 +1247,20 @@ public class MapsActivity extends BaseActivity implements
 
     //make user online
     private void makeUserOnline() {
-
         //update Realtime Database status value
-        mDatabaseReference.child("user").child(mFirebaseAuth.getCurrentUser().getPhoneNumber()).child("status").setValue(0);
+        mDatabaseReference.child("USER").child(USER_KEY).child("status").setValue(0);
         // Adding on disconnect hook
-        mDatabaseReference.child("user").child(mFirebaseAuth.getCurrentUser().getPhoneNumber()).child("status").onDisconnect().setValue(1);
+        mDatabaseReference.child("USER").child(USER_KEY).child("status").onDisconnect().setValue(1);
     }
 
     //make user offline
     private void makeUserOffline() {
         //change value in Realtime Database so that the cloud function will automatically change it in the realtime database
-        mDatabaseReference.child("user").child(mFirebaseAuth.getCurrentUser().getPhoneNumber()).child("status").setValue(1);
+        mDatabaseReference.child("USER").child(USER_KEY).child("status").setValue(1);
     }
 
     private void makeUserAway() {
-        mDatabaseReference.child("user").child(mFirebaseAuth.getCurrentUser().getPhoneNumber()).child("status").setValue(2);
+        mDatabaseReference.child("USER").child(USER_KEY).child("status").setValue(2);
     }
 
     //this might be useful when i will implement the search bar so that when u press on
@@ -1241,88 +1289,92 @@ public class MapsActivity extends BaseActivity implements
             }
             if (resultCode == Activity.RESULT_CANCELED) {
                 //Write your code if there's no result
+                Toast.makeText(getApplicationContext(), "No result gotten from intent", Toast.LENGTH_SHORT).show();
             }
         }
     }
 
-    private void drawRoute(LatLng mMarkerClickLatLng) {
+    private TSnackbar mSnackBar;
+    private List<Polyline> mPolyLines;
+    private FloatingActionButton mCancelRouteBtn;
+    private RoutingListener mRoutingListener = new RoutingListener() {
+        @Override
+        public void onRoutingFailure(RouteException e) {
+            Toast.makeText(getApplicationContext(), "Routing Directions failed", Toast.LENGTH_SHORT).show();
+        }
 
+        @Override
+        public void onRoutingStart() {
+            Toast.makeText(getApplicationContext(), "Routing Started", Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        public void onRoutingSuccess(ArrayList<Route> route, int shortestRouteIndex) {
+            //hide toolbar  to make space for the snakbar
+            getSupportActionBar().hide();
+
+            if (mPolyLines.size() > 0)
+                for (Polyline polyline : mPolyLines)
+                    polyline.remove();
+
+            mPolyLines = new ArrayList<>();
+            //add route(s) to the map.
+            for (int i = 0; i < route.size(); i++) {
+                PolylineOptions mPolyLineOptions = new PolylineOptions();
+                mPolyLineOptions.color(getResources().getColor(R.color.light_blue));
+                mPolyLineOptions.width(10 + i * 3);
+                mPolyLineOptions.addAll(route.get(i).getPoints());
+                Polyline polyline = mMap.addPolyline(mPolyLineOptions);
+                mPolyLines.add(polyline);
+            }
+
+            //mSnackBar to show distance and time to cover it
+            mSnackBar = TSnackbar
+                    .make(findViewById(R.id.mainWindow), String.format("Distance - [ %d ] ~~ Duration - [ %d ]",
+                                                                        route.get(shortestRouteIndex).getDistanceValue(),
+                                                                        route.get(shortestRouteIndex).getDurationValue()), TSnackbar.LENGTH_INDEFINITE);
+            mSnackBar.setIconRight(R.drawable.direction_btn, 24); //Size in dp - 24 is great!
+            mSnackBar.setIconPadding(8);
+            //mSnackBar.setMaxWidth(3000); //if you want fullsize on tablets
+            View snackbarView = mSnackBar.getView();
+            TextView textView = snackbarView.findViewById(com.androidadvance.topsnackbar.R.id.snackbar_text);
+            textView.setTextColor(getResources().getColor(R.color.white));
+            snackbarView.setBackgroundColor(getResources().getColor(R.color._light_green));
+            mSnackBar.show();
+
+            //make cancel route button visible only if route was created successfully
+            mCancelRouteBtn.show();
+            Toasty.success(getApplicationContext(), "Route successfully created", 1000, true).show();
+        }
+
+        @Override
+        public void onRoutingCancelled() {
+            Toast.makeText(getApplicationContext(), "Routing was cancelled", Toast.LENGTH_SHORT).show();
+        }
+    };
+
+    //erase all Route lines from the map
+    private void eraseAllRouteLines() {
+        mSnackBar.dismiss();
+        for (Polyline line : mPolyLines) {
+            line.remove();
+        }
+        mPolyLines.clear();
+    }
+
+    private void drawRoute(LatLng mMarkerClickLatLng) {
         Routing routing = new Routing.Builder()
                 .travelMode(AbstractRouting.TravelMode.DRIVING)
-                .withListener(this)
-                .alternativeRoutes(false) //will make if true to experiment it sometime
+                .withListener(mRoutingListener)
+                .alternativeRoutes(false)
                 .waypoints(new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude()), mMarkerClickLatLng)  // (start , end)
                 .build();
         routing.execute();
     }
 
-    //erase all Route lines from the map
-    private void eraseAllRouteLines() {
-
-        snackbar.dismiss();
-        for (Polyline line : polylines) {
-            line.remove();
-        }
-        polylines.clear();
-    }
-
-    @Override
-    public void onRoutingFailure(RouteException e) {
-
-        Toasty.error(getApplicationContext(), "Route couldnt be created check code", 2000).show();
-    }
-
-    @Override
-    public void onRoutingStart() {
-
-    }
-
-    @Override
-    public void onRoutingSuccess(ArrayList<Route> route, int shortestRouteIndex) {
-
-        //hide toolbar  to make space for the snakbar
-        getSupportActionBar().hide();
-
-        if (polylines.size() > 0)
-            for (Polyline poly : polylines)
-                poly.remove();
-
-        polylines = new ArrayList<>();
-        //add route(s) to the map.
-        for (int i = 0; i < route.size(); i++) {
-
-            PolylineOptions polyOptions = new PolylineOptions();
-            polyOptions.color(getResources().getColor(R.color.cornflower_blue));
-            polyOptions.width(10 + i * 3);
-            polyOptions.addAll(route.get(i).getPoints());
-            Polyline polyline = mMap.addPolyline(polyOptions);
-            polylines.add(polyline);
-
-        }
-
-        //snackbar to show distance and time to cover it
-        snackbar = TSnackbar
-                .make(findViewById(R.id.mainWindow), String.format("Distance - [ %d ] ~~ Duration - [ %d ]", route.get(shortestRouteIndex).getDistanceValue(), route.get(shortestRouteIndex).getDurationValue()), TSnackbar.LENGTH_INDEFINITE);
-        snackbar.setActionTextColor(Color.WHITE);
-        snackbar.setIconLeft(R.drawable.ic_directions_black_24dp, 24); //Size in dp - 24 is great!
-        snackbar.setIconPadding(8);
-        //snackbar.setMaxWidth(3000); //if you want fullsize on tablets
-        View snackbarView = snackbar.getView();
-        snackbarView.setBackgroundColor(Color.BLACK);
-        snackbar.show();
-
-        //make cancel route button visible only if route was created successfully
-        //cancelRoute.setVisibility(View.VISIBLE);
-        Toasty.success(getApplicationContext(), "Route succesfully created", 1000, true).show();
-    }
-
-    @Override
-    public void onRoutingCancelled() {
-
-    }
-
     //calling a user
     private void call(Marker mMarkerData) {
+
         User userInfo = gson.fromJson(mMarkerData.getSnippet(), User.class);
         Call call = getSinchServiceInterface().callUser(userInfo.getPhone());
         String callId = call.getCallId();

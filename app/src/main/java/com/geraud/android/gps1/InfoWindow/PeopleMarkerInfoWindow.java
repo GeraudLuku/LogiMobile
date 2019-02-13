@@ -15,12 +15,12 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.gson.Gson;
 
 
-public class InfoWindow_People implements GoogleMap.InfoWindowAdapter {
+public class PeopleMarkerInfoWindow implements GoogleMap.InfoWindowAdapter {
 
     private View mWindow;
     private Context mContext;
 
-    public InfoWindow_People(Context mContext) {
+    public PeopleMarkerInfoWindow(Context mContext) {
         this.mContext = mContext;
         mWindow = LayoutInflater.from(mContext).inflate(R.layout.info_window_people, null);
 

@@ -30,34 +30,37 @@ import static android.app.Activity.RESULT_OK;
  */
 
 public class AddPlace extends AppCompatDialogFragment {
-    private EditText name, description;
-    private ImageView image;
-    private Spinner spinner;
-    private String dec2;
-    private Uri image_uri;
-    private AddPlaceListener listener;
+    private EditText mNameEditText, mDescriptionEditText;
+    private ImageView mImageView;
+    private Spinner mSpinner;
+    private String mPlaceType;
+    private Uri mImageUri;
+    private AddPlaceListener mAddPlaceListener;
 
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
+
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
 
         LayoutInflater inflater = getActivity().getLayoutInflater();
         View view = inflater.inflate(R.layout.add_place, null);
 
         //initialise the views
-        name = view.findViewById(R.id.place_name);
-        description = view.findViewById(R.id.place_description);
-        image = view.findViewById(R.id.place_image);
-        spinner = view.findViewById(R.id.place_spinner);
+        mNameEditText = view.findViewById(R.id.place_name);
+        mDescriptionEditText = view.findViewById(R.id.place_description);
+        mImageView = view.findViewById(R.id.place_image);
+
+        mSpinner = view.findViewById(R.id.place_spinner);
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getActivity(), R.array.places_types, android.R.layout.simple_spinner_dropdown_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        mSpinner.setAdapter(adapter);
+        mSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (position == 0) //do nothing since its the hint
+                    view.setClickable(false);
 
-                dec2 = parent.getItemAtPosition(position).toString();
+                mPlaceType = parent.getItemAtPosition(position).toString();
             }
 
             @Override
@@ -65,8 +68,8 @@ public class AddPlace extends AppCompatDialogFragment {
             }
         });
 
-        //open gallery to select an image of the place
-        image.setOnClickListener(new View.OnClickListener() {
+        //open gallery to select an mImageView of the place
+        mImageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //CALL THE IMAGE CROPPER LIBRARY TO CROP THE SELECTED IMAGE
@@ -79,7 +82,6 @@ public class AddPlace extends AppCompatDialogFragment {
         });
 
         builder.setView(view)
-                .setTitle("Add Place")
                 .setCancelable(true)
                 .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                     @Override
@@ -91,13 +93,10 @@ public class AddPlace extends AppCompatDialogFragment {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
 
-
-                        String place_name = name.getText().toString();
-                        String place_desc = description.getText().toString();
-                        if (!TextUtils.isEmpty(place_name) && !TextUtils.isEmpty(place_desc) && image_uri != null && !dec2.isEmpty()) {
-
-                            listener.AddPlaceOnMap(place_name, place_desc, image_uri, dec2);
-
+                        String placeName = mNameEditText.getText().toString();
+                        String placeDesc = mDescriptionEditText.getText().toString();
+                        if (!TextUtils.isEmpty(placeName) && !TextUtils.isEmpty(placeDesc) && mImageUri != null && !mPlaceType.isEmpty()) {
+                            mAddPlaceListener.AddPlaceOnMap(placeName, placeDesc, mImageUri, mPlaceType);
                         } else
                             Toasty.error(getActivity(), "Enter An Image, Name,Description And Type", 2000, true).show();
                     }
@@ -109,15 +108,15 @@ public class AddPlace extends AppCompatDialogFragment {
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        //here we will initialise our listener
+        //here we will initialise our mAddPlaceListener
         try {
-            listener = (AddPlaceListener) context;
+            mAddPlaceListener = (AddPlaceListener) context;
         } catch (ClassCastException e) {
             throw new ClassCastException(context.toString() + "Must implement AddPlaceListener");
         }
     }
 
-    //get the result form the image cropper and displays it on the image view
+    //get the result form the mImageView cropper and displays it on the mImageView view
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -128,8 +127,8 @@ public class AddPlace extends AppCompatDialogFragment {
 
             if (resultCode == RESULT_OK) {
 
-                image_uri = result.getUri();
-                image.setImageURI(image_uri);
+                mImageUri = result.getUri();
+                mImageView.setImageURI(mImageUri);
 
             } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
                 Toasty.error(getActivity(), result.getError().toString(), 2000, true).show();

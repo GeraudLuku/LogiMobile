@@ -21,6 +21,7 @@
     <string name="add_geo_boundary">Add Geo-Boundary</string>
     <string name="what_is_the_place_about">What is the place about?</string>
     <string name="name">Name</string>
+    <string name="add_place">Add Place</string>
 
     <string-array name="places_types">
         <item>What Type Of pLace is it?</item>
@@ -34,6 +35,7 @@
         <item>Bank</item>
         <item>Bar</item>
         <item>Beauty Salon</item>
+        <item>Beach</item>
         <item>Bicycle Store</item>
         <item>Book Store</item>
         <item>Bowling Alley</item>
@@ -52,46 +54,37 @@
         <item>Convenience Store</item>
         <item>Courthouse</item>
         <item>Dentist</item>
-        <item>Department Store</item>
         <item>Doctor</item>
         <item>Electrician</item>
         <item>Electronics Store</item>
         <item>Embassy</item>
         <item>Fire Station</item>
         <item>Florist</item>
-        <item>Funeral Home</item>
         <item>Furniture Store</item>
         <item>Gas Station</item>
         <item>Gym</item>
-        <item>Hair Care</item>
-        <item>Hardware Store</item>
+        <item>Hair Saloon</item>
         <item>Hindu Temple</item>
-        <item>Home Goods Store</item>
         <item>Hospital</item>
         <item>Insurance Agency</item>
         <item>Jewelry Store</item>
         <item>Laundry</item>
         <item>Lawyer</item>
         <item>Library</item>
-        <item>Liquor Store</item>
         <item>Local Government Office</item>
-        <item>Locksmith</item>
         <item>Lodging</item>
         <item>Mosque</item>
         <item>Movie Theater</item>
         <item>Moving Company</item>
         <item>Museum</item>
         <item>Night Club</item>
-        <item>Painter</item>
         <item>Park</item>
         <item>Parking</item>
-        <item>Pet Store</item>
         <item>Pharmacy</item>
-        <item>Physiotherapist</item>
         <item>Plumber</item>
         <item>Police</item>
         <item>Post Office</item>
-        <item>Real Estate Agency</item>
+        <item>Repairer</item>
         <item>Restaurant</item>
         <item>Roofing Contractor</item>
         <item>School</item>
@@ -99,15 +92,13 @@
         <item>Shopping Mall</item>
         <item>Spa</item>
         <item>Stadium</item>
-        <item>Storage</item>
         <item>Store</item>
         <item>Subway Station</item>
         <item>Supermarket</item>
-        <item>Synagogue</item>
         <item>Taxi Stand</item>
         <item>Train Station</item>
-        <item>Transit Station</item>
         <item>Travel Agency</item>
+        <item>University</item>
         <item>Veterinary Care</item>
         <item>Zoo</item>
     </string-array>

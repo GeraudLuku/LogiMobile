@@ -36,14 +36,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:id="@+id/mapLocation"
-                android:src="@drawable/ic_directions_black_24dp"
+                android:src="@drawable/direction_btn"
                 android:layout_marginLeft="100dp"
                 />
             <ImageView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:id="@+id/call"
-                android:src="@drawable/ic_call_black_24dp"
+                android:src="@drawable/call_btn"
                 android:layout_marginLeft="20dp"
                 />
 

@@ -28,20 +28,23 @@ public class SinchService extends Service {
     public static final String CALL_NAME = "CALL_NAME";
     public static final String CALL_IMAGE = "CALL_IMAGE";
     static final String TAG = SinchService.class.getSimpleName();
+
     //configuration for the Sinch Api
     private static final String APP_KEY = "f5759e0e-a7e2-44b5-990c-06614c95736c";
     private static final String APP_SECRET = "X3oGpHO4HkeKHYAQiTVITA==";
     private static final String ENVIRONMENT = "clientapi.sinch.com";
     private SinchServiceInterface mSinchServiceInterface = new SinchServiceInterface();
     private SinchClient mSinchClient;
+
     private String mUserId;
 
-    private DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
+    private DatabaseReference mDatabase;
 
     private StartFailedListener mListener;
 
     @Override
     public void onCreate() {
+        mDatabase = FirebaseDatabase.getInstance().getReference();
         super.onCreate();
     }
 
@@ -190,7 +193,7 @@ public class SinchService extends Service {
         public void onIncomingCall(CallClient callClient, final Call call) {
             Log.d(TAG, "Incoming call");
             //look for the users info in the database
-            mDatabase.child("user").child(call.getCallId()).addListenerForSingleValueEvent(new ValueEventListener() {
+            mDatabase.child("USER").child(call.getCallId()).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     if (dataSnapshot.exists()) {

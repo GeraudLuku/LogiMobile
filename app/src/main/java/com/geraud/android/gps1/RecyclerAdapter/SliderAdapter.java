@@ -34,11 +34,11 @@ public class SliderAdapter extends PagerAdapter {
             "Discover & Add Locations"
     };
     private String[] descriptions = {
-            "Get access to real time location of all friends and also locations of areas around you",
+            "Get access to real time location of all mContactList and also locations of areas around you",
             "Send messages to your contacts using our well optimised cloud messaging systems",
             "We got your back on the moments you will like to disappear from the radar",
             "The maps contrast automatically adapts to your environment to improve your vision",
-            "Don't just watch default locations you can create custom locations on the map and share with your friends"
+            "Don't just watch default locations you can create custom locations on the map and share with your mContactList"
     };
 
     public SliderAdapter(Context context) {

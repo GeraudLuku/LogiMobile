@@ -8,6 +8,7 @@ import android.media.AudioTrack;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.geraud.android.gps1.R;
 
@@ -16,14 +17,15 @@ import java.io.IOException;
 
 public class AudioPlayer {
 
-    static final String LOG_TAG = AudioPlayer.class.getSimpleName();
+    private static final String LOG_TAG = AudioPlayer.class.getSimpleName();
     private final static int SAMPLE_RATE = 16000;
+
     private Context mContext;
     private MediaPlayer mPlayer;
     private AudioTrack mProgressTone;
 
     public AudioPlayer(Context context) {
-        this.mContext = context.getApplicationContext();
+        this.mContext = context;
     }
 
     private static AudioTrack createProgressTone(Context context) throws IOException {
@@ -58,7 +60,7 @@ public class AudioPlayer {
     public void playRingtone() {
         AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
 
-        // Honour silent mode
+        // Honour silent mode / dont play sound if volume mode is silent
         switch (audioManager.getRingerMode()) {
             case AudioManager.RINGER_MODE_NORMAL:
                 mPlayer = new MediaPlayer();
@@ -66,10 +68,10 @@ public class AudioPlayer {
 
                 try {
                     mPlayer.setDataSource(mContext,
-                            Uri.parse("android.resource://" + mContext.getPackageName() + "/" + R.raw.ringtone));
+                            Uri.parse("android.resource://" + mContext.getPackageName() + "/raw/ringtone"));
                     mPlayer.prepare();
                 } catch (IOException e) {
-                    Log.e(LOG_TAG, "Could not setup media player for ringtone");
+                    Toast.makeText(mContext, "Could not setup media player for ringtone", Toast.LENGTH_SHORT).show();
                     mPlayer = null;
                     return;
                 }
