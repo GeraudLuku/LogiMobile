@@ -12,5 +12,9 @@
     <item
         android:id="@+id/callMenuBtn"
         android:icon="@drawable/call_btn"
-        android:title="Call" />
+        android:title="@string/call" />
+    <item
+        android:id="@+id/trackMenuBtn"
+        android:icon="@drawable/ic_show_geofences"
+        android:title="@string/track" />
 </menu>

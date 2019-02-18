@@ -22,6 +22,9 @@
     <string name="what_is_the_place_about">What is the place about?</string>
     <string name="name">Name</string>
     <string name="add_place">Add Place</string>
+    <string name="track">Track</string>
+    <string name="call">Call</string>
+    <string name="currently_tracking">Currently Tracking</string>
 
     <string-array name="places_types">
         <item>What Type Of pLace is it?</item>
