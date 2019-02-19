@@ -5,23 +5,20 @@ import java.util.ArrayList;
 
 public class Stories implements Serializable {
     private Boolean location;
-    private String media, description ;
+    private String media, description;
     private long timestamp;
-    private Double latitude,longitude;
+    private Double latitude, longitude;
     private String type;
     private String phone;
 
-    public int getCount() {
-        return storyObjectArrayList.size();
-    }
 
     private ArrayList<Stories> storyObjectArrayList = new ArrayList<>();
 
-    public Stories(){
+    public Stories() {
         //empty constructor
     }
 
-    public Stories(Boolean location, String media, String description, long timestamp, Double latitude, Double longitude, String type,String phone) {
+    public Stories(Boolean location, String media, String description, long timestamp, Double latitude, Double longitude, String type, String phone) {
         this.location = location;
         this.media = media;
         this.description = description;
@@ -96,11 +93,15 @@ public class Stories implements Serializable {
         this.type = type;
     }
 
-    public void addStoryToArray(Stories mStories){
+    public void addStoryToArray(Stories mStories) {
         storyObjectArrayList.add(mStories);
     }
 
     public ArrayList<Stories> getStoryObjectArrayList() {
         return storyObjectArrayList;
+    }
+
+    public int getCount() {
+        return storyObjectArrayList.size();
     }
 }

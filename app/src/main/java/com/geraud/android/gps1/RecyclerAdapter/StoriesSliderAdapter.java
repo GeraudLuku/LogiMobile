@@ -1,6 +1,10 @@
 package com.geraud.android.gps1.RecyclerAdapter;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.v4.view.PagerAdapter;
@@ -19,24 +23,63 @@ import com.geraud.android.gps1.R;
 import java.util.ArrayList;
 
 public class StoriesSliderAdapter extends PagerAdapter {
-    private Context context;
-    private ArrayList<Stories> stories;
-    private LayoutInflater layoutInflater;
-    private View view;
-    private int position;
+    private Context mContext;
+    private ArrayList<Stories> mStoriesList;
 
-    public StoriesSliderAdapter(Context context, ArrayList<Stories> stories){
-        this.context = context;
-        this.stories = stories;
+    private LayoutInflater mLayoutInflater;
+
+    private VideoView mVideoView;
+    private ImageView mImageView;
+    private TextView mImageTextView, mVideoTextView;
+
+    private View mView;
+    private int mPosition;
+
+    private AudioBecomingNoisy mAudioBecomingNoisy;
+    private AudioManager mAudioManager;
+    private IntentFilter mNoisyIntentFilter;
+    private AudioManager.OnAudioFocusChangeListener mOnAudioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
+        @Override
+        public void onAudioFocusChange(int focusChange) {
+            switch (focusChange) {
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                    mediaPause();
+                    break;
+
+                case AudioManager.AUDIOFOCUS_GAIN:
+                    mediaPlay();
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS:
+                    mediaPause();
+                    break;
+            }
+        }
+    };
+
+    private class AudioBecomingNoisy extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            mediaPause();
+        }
+    }
+
+    public StoriesSliderAdapter(Context context, ArrayList<Stories> stories) {
+        mContext = context;
+        mStoriesList = stories;
+
+        mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
+        mAudioBecomingNoisy = new AudioBecomingNoisy();
+        mNoisyIntentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
     }
 
     @Override
     public int getCount() {
-        return stories.size();
+        return mStoriesList.size();
     }
 
-    public int getCurrentPosition(){
-        return this.position;
+    public int getCurrentPosition() {
+        return mPosition;
     }
 
     @Override
@@ -47,71 +90,66 @@ public class StoriesSliderAdapter extends PagerAdapter {
     @NonNull
     @Override
     public Object instantiateItem(@NonNull ViewGroup container, int position) {
-        layoutInflater = (LayoutInflater) context.getSystemService(context.LAYOUT_INFLATER_SERVICE);
-        this.position = position;
+        mLayoutInflater = (LayoutInflater) mContext.getSystemService(mContext.LAYOUT_INFLATER_SERVICE);
+        mPosition = position;
 
-        if (stories.get(position).getType().equals("image")){
-            view = layoutInflater.inflate(R.layout.image_story_slide_layout, container,false);
-            container.addView(view);
+        if (mStoriesList.get(position).getType().equals("image")) {
+            mView = mLayoutInflater.inflate(R.layout.image_story_slide_layout, container, false);
+            container.addView(mView);
 
-            ImageView imageView = view.findViewById(R.id.imageView);
-            TextView textView = view.findViewById(R.id.imageDescription);
-            View line = view.findViewById(R.id.view);
+            mImageView = mView.findViewById(R.id.imageView);
+            mImageTextView = mView.findViewById(R.id.imageDescription);
+            View line = mView.findViewById(R.id.view);
 
             //load image with Glide on View
-            Glide.with(context)
-                    .load(stories.get(position).getMedia())
-                    .into(imageView);
+            Glide.with(mContext)
+                    .load(mStoriesList.get(position).getMedia())
+                    .into(mImageView);
 
             //load description text
-            if (stories.get(position).getDescription().equals("")){
+            if (mStoriesList.get(position).getDescription().equals("")) {
                 line.setVisibility(View.INVISIBLE);
-                textView.setVisibility(View.INVISIBLE);
-            }else {
-                textView.setText(stories.get(position).getDescription());
+                mImageTextView.setVisibility(View.INVISIBLE);
+            } else {
+                mImageTextView.setText(mStoriesList.get(position).getDescription());
             }
 
 
-        }
+        } else if (mStoriesList.get(position).getType().equals("video")) {
+            mView = mLayoutInflater.inflate(R.layout.video_story_slide_layout, container, false);
+            container.addView(mView);
 
-        else if(stories.get(position).getType().equals("video")){
-            view = layoutInflater.inflate(R.layout.video_story_slide_layout, container,false);
-            container.addView(view);
-
-            final VideoView videoView = view.findViewById(R.id.videoView);
-            TextView textView = view.findViewById(R.id.imageDescription);
-            View line = view.findViewById(R.id.view);
+            mVideoView = mView.findViewById(R.id.videoView);
+            mVideoTextView = mView.findViewById(R.id.imageDescription);
+            View line = mView.findViewById(R.id.view);
 
             //load video on videoView
-            videoView.setVideoURI(Uri.parse(stories.get(position).getMedia()));
-            videoView.start();
+            mVideoView.setVideoURI(Uri.parse(mStoriesList.get(position).getMedia()));
+            mVideoView.start();
 
             //load description text
-            if (stories.get(position).getDescription().equals("")){
+            if (mStoriesList.get(position).getDescription().equals("")) {
                 line.setVisibility(View.INVISIBLE);
-                textView.setVisibility(View.INVISIBLE);
-            }else {
-                textView.setText(stories.get(position).getDescription());
+                mVideoTextView.setVisibility(View.INVISIBLE);
+            } else {
+                mVideoTextView.setText(mStoriesList.get(position).getDescription());
             }
 
             //set on Touch listener onRelease it plays onTouch it pauses
-            videoView.setOnTouchListener(new View.OnTouchListener() {
+            mVideoView.setOnTouchListener(new View.OnTouchListener() {
                 @Override
                 public boolean onTouch(View v, MotionEvent event) {
                     Boolean result = false;
                     switch (event.getAction()) {
                         case MotionEvent.ACTION_DOWN:
                             //play video
-                            if (videoView.isPlaying()){
-                                videoView.pause();
-                            }
+                            mediaPlay();
                             result = true;
                             break;
 
                         case MotionEvent.ACTION_UP:
                             // pause video
-                            if (!videoView.isPlaying())
-                                videoView.start();
+                            mediaPause();
                             result = true;
                             break;
                     }
@@ -120,7 +158,21 @@ public class StoriesSliderAdapter extends PagerAdapter {
             });
 
         }
-        return view;
+        return mView;
+    }
+
+    private void mediaPause() {
+        mVideoView.pause();
+        mAudioManager.abandonAudioFocus(mOnAudioFocusChangeListener);
+        mContext.unregisterReceiver(mAudioBecomingNoisy);
+    }
+
+    private void mediaPlay() {
+        mContext.registerReceiver(mAudioBecomingNoisy, mNoisyIntentFilter);
+        int requestAudioFocusResult = mAudioManager.requestAudioFocus(mOnAudioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+        if (requestAudioFocusResult == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            mVideoView.start();
+        }
     }
 
     @Override

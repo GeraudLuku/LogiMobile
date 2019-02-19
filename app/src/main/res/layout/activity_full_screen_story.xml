@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/container"
     android:layout_width="match_parent"
@@ -17,39 +16,55 @@
 
     <de.hdodenhof.circleimageview.CircleImageView
         android:id="@+id/userImage"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_below="@+id/layoutBars"
         android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
         android:layout_marginStart="12dp"
-        android:layout_marginTop="23dp" />
+        android:layout_marginTop="9dp"
+        tools:src="@drawable/noimage" />
 
     <TextView
         android:id="@+id/userName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginStart="66dp"
-        android:layout_marginTop="30dp"
-        android:text="Geraud Luku" />
+        android:layout_below="@+id/layoutBars"
+        android:layout_marginStart="13dp"
+        android:layout_marginTop="13dp"
+        android:layout_toEndOf="@+id/userImage"
+        tools:text="Geraud Luku" />
 
     <TextView
         android:id="@+id/timestamp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignStart="@+id/userName"
+        android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
-        android:layout_marginTop="56dp"
-        android:text="12:40 PM" />
+        android:layout_marginStart="93dp"
+        android:layout_marginTop="90dp"
+        tools:text="12:40 PM" />
 
-    <Button
+    <ImageButton
         android:id="@+id/gotoLocationButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/userImage"
+        android:layout_below="@+id/layoutBars"
         android:layout_alignParentEnd="true"
-        android:layout_marginEnd="19dp" />
+        android:layout_marginTop="17dp"
+        android:layout_marginEnd="13dp"
+        android:background="@android:color/transparent"
+        android:src="@drawable/story_location" />
+
+    <ImageButton
+        android:id="@+id/chatButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/layoutBars"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="17dp"
+        android:layout_marginEnd="57dp"
+        android:background="@android:color/transparent"
+        android:src="@drawable/story_chat" />
 
 
     <LinearLayout
@@ -57,9 +72,12 @@
         android:layout_width="match_parent"
         android:layout_height="20dp"
         android:layout_alignParentStart="true"
+        android:layout_margin="10dp"
         android:layout_marginStart="0dp"
         android:gravity="center"
-        android:orientation="horizontal" />
+        android:orientation="horizontal"
+        android:padding="5dp"
+        tools:background="@color/gray" />
 
 
 </RelativeLayout>

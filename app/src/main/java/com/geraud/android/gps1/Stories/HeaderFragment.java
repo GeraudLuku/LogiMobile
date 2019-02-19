@@ -26,19 +26,19 @@ import com.google.firebase.database.ValueEventListener;
 
 public class HeaderFragment extends Fragment {
 
-    private ImageView images;
-    private Button add;
-    private TextView textSnippet;
-    private DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference().child("stories");
-    private FirebaseAuth auth = FirebaseAuth.getInstance();
+    private ImageView mImageView;
+    private Button mAddStatusButton;
+    private TextView mTextSnippet;
 
-    private Stories stories = new Stories();
-    private Stories story;
+    private DatabaseReference mDatabaseReference;
+    private FirebaseAuth mFirebaseAuth;
+
+    private Stories mStories = new Stories();
+    private Stories mStory = new Stories();
 
     public HeaderFragment() {
         // Required empty public constructor
     }
-
 
     //this is the fragment for the header( Stories ) of the navigation bar
     @Override
@@ -47,11 +47,14 @@ public class HeaderFragment extends Fragment {
         // Inflate the layout for this fragment
         View view = inflater.inflate(R.layout.fragment_header, container, false);
 
-        images = view.findViewById(R.id.add_status_image);
-        add = view.findViewById(R.id.add_status_button);
-        textSnippet = view.findViewById(R.id.add_status_text);
+        mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORIES");
+        mFirebaseAuth = FirebaseAuth.getInstance();
 
-        add.setOnClickListener(new View.OnClickListener() {
+        mImageView = view.findViewById(R.id.add_status_image);
+        mAddStatusButton = view.findViewById(R.id.add_status_button);
+        mTextSnippet = view.findViewById(R.id.add_status_text);
+
+        mAddStatusButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 new Intent(getContext(),CameraActivity.class);
@@ -59,18 +62,18 @@ public class HeaderFragment extends Fragment {
         });
 
         //load users status media from firebase
-        mDatabase.child(auth.getCurrentUser().getPhoneNumber()).addValueEventListener(new ValueEventListener() {
+        mDatabaseReference.child(mFirebaseAuth.getCurrentUser().getPhoneNumber()).addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()){
                     for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                        story = dc.getValue(Stories.class);
-                        stories.addStoryToArray(story);
+                        mStory = dc.getValue(Stories.class);
+                        mStories.addStoryToArray(mStory);
                     }
                     Glide.with(getContext())
-                            .load(story.getMedia())
-                            .into(images);
-                    textSnippet.setText(TimeAgo.getTimeAgo(story.getTimestamp()));
+                            .load(mStory.getMedia())
+                            .into(mImageView);
+                    mTextSnippet.setText(TimeAgo.getTimeAgo(mStory.getTimestamp()));
                 }
             }
 

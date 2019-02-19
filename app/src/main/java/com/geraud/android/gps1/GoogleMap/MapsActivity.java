@@ -254,7 +254,7 @@ public class MapsActivity extends BaseActivity implements
                     // The toggle is enabled
                     TextView textView = findViewById(R.id.showLocationTxt);
                     textView.setText("Hide Location");
-                    if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+                    if (!checkPermission())
                         requestPermission();
                     mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, INTERVAL, 1, mLocationListener);
                 } else {
@@ -469,6 +469,8 @@ public class MapsActivity extends BaseActivity implements
             unbindService(mServiceConnection);
             mServiceIsBound = false;
         }
+        if (mLocationManager != null)
+            mLocationManager.removeUpdates(mLocationListener);
         super.onDestroy();
     }
 
@@ -504,14 +506,12 @@ public class MapsActivity extends BaseActivity implements
             mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
             mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-            if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
-                requestPermission();
-            mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, INTERVAL, 1, mLocationListener);
 
             getCurrentLocation();
             LoadPlaces();
             loadGeoFences();
             LoadFriends();
+
             //Setting onMarker/OnMap Listeners
             mMap.setOnMapLongClickListener(mOnMapLongCLickListener);
             mMap.setOnMapClickListener(mOnMapClickListener);
@@ -522,6 +522,7 @@ public class MapsActivity extends BaseActivity implements
             if (checkPermission()) {
                 buildGoogleApiClient();
                 mMap.setMyLocationEnabled(true);
+                mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, INTERVAL, 0, mLocationListener);
                 // Check the location settings of the user and create the callback to react to the different possibilities
                 LocationSettingsRequest.Builder locationSettingsRequestBuilder = new LocationSettingsRequest.Builder()
                         .addLocationRequest(mLocationRequest);
@@ -1191,6 +1192,7 @@ public class MapsActivity extends BaseActivity implements
     private List<LatLng> mGeoLocationsList;
     private GeoQueries mGeoQueriesService;
     private Circle mGeoBoundary;
+
     private void loadGeoFences() {
         mGeoLocationsList = new ArrayList<>();
         mDatabaseReference.child("GEOFENCES").child(USER_KEY).addListenerForSingleValueEvent(new ValueEventListener() {
@@ -1327,6 +1329,7 @@ public class MapsActivity extends BaseActivity implements
     // a search result it go directly to the location of the user on the map
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == 1) {
             if (resultCode == Activity.RESULT_OK) {

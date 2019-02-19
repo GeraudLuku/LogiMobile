@@ -7,10 +7,9 @@ import android.text.Html;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.geraud.android.gps1.Models.Stories;
@@ -23,17 +22,30 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
 
     public static final int SWIPE_THRESHOLE = 100;
     public static final int VELOCITY_THRESHOLE = 100;
+
     private ViewPager mViewPager;
     private ImageView mUserImage;
-    private TextView mUserName,
-            mTimeStamp;
-    private Button mGotoLocationButton;
-    private LinearLayout mBarLayout;
-    private RelativeLayout mContainer;
-    private TextView dots[];
+    private TextView mUserName, mTimeStamp;
+    private ImageButton mGotoLocationButton, mChatButton;
 
-    private ArrayList<Stories> stories = new ArrayList<>();
-    private StoriesSliderAdapter storiesSliderAdapter;
+    private TextView bars[];
+
+    private LinearLayout mBarLayout;
+
+    private ArrayList<Stories> mStoriesList = new ArrayList<>();
+    private StoriesSliderAdapter mStoriesSliderAdapter;
+
+    private View.OnClickListener mOnClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            switch (v.getId()){
+                case R.id.gotoLocationButton:
+                    break;
+                case R.id.chatButton:
+                    break;
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,9 +57,23 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
         mUserImage = findViewById(R.id.userImage);
         mUserName = findViewById(R.id.userName);
         mTimeStamp = findViewById(R.id.timestamp);
+
         mGotoLocationButton = findViewById(R.id.gotoLocationButton);
+        mChatButton = findViewById(R.id.chatButton);
+        mGotoLocationButton.setOnClickListener(mOnClickListener);
+        mChatButton.setOnClickListener(mOnClickListener);
+
         mBarLayout = findViewById(R.id.layoutBars);
-        mContainer = findViewById(R.id.container);
+
+        //get intent serialisable from intent data
+        Stories model = (Stories) getIntent().getSerializableExtra("story");
+        mStoriesList = model.getStoryObjectArrayList();
+
+        mStoriesSliderAdapter = new StoriesSliderAdapter(this, mStoriesList);
+        mViewPager.setAdapter(mStoriesSliderAdapter);
+        mViewPager.addOnPageChangeListener(viewPagerPageChangeListener);
+
+        addBottomDots(mStoriesSliderAdapter.getCurrentPosition());
 
         //on viewpager touch hide all views
         mViewPager.setOnTouchListener(new View.OnTouchListener() {
@@ -56,37 +82,17 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
                 Boolean result = false;
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        mUserImage.setVisibility(View.INVISIBLE);
-                        mUserName.setVisibility(View.INVISIBLE);
-                        mTimeStamp.setVisibility(View.INVISIBLE);
-                        mGotoLocationButton.setVisibility(View.INVISIBLE);
-                        mBarLayout.setVisibility(View.INVISIBLE);
+                        visibility(false);
                         result = true;
                         break;
                     case MotionEvent.ACTION_UP:
-                        mUserImage.setVisibility(View.VISIBLE);
-                        mUserName.setVisibility(View.VISIBLE);
-                        mTimeStamp.setVisibility(View.VISIBLE);
-                        mGotoLocationButton.setVisibility(View.VISIBLE);
-                        mBarLayout.setVisibility(View.VISIBLE);
+                       visibility(true);
                         result = true;
                         break;
                 }
                 return result;
             }
         });
-
-        //get intent serialisable from intent data
-        Stories model = (Stories) getIntent().getSerializableExtra("story");
-        stories = model.getStoryObjectArrayList();
-
-        storiesSliderAdapter = new StoriesSliderAdapter(this, stories);
-        mViewPager.setAdapter(storiesSliderAdapter);
-        mViewPager.addOnPageChangeListener(viewPagerPageChangeListener);
-
-        addBottomDots(storiesSliderAdapter.getCurrentPosition());
-
-        //i want a swipe down gesture to close the activity
     }
 
     @Override
@@ -122,13 +128,31 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
         }
     };
 
+    private void visibility(Boolean visible){
+        if (visible){
+            mUserImage.setVisibility(View.VISIBLE);
+            mUserName.setVisibility(View.VISIBLE);
+            mTimeStamp.setVisibility(View.VISIBLE);
+            mGotoLocationButton.setVisibility(View.VISIBLE);
+            mChatButton.setVisibility(View.VISIBLE);
+            mBarLayout.setVisibility(View.VISIBLE);
+        }else {
+            mUserImage.setVisibility(View.INVISIBLE);
+            mUserName.setVisibility(View.INVISIBLE);
+            mTimeStamp.setVisibility(View.INVISIBLE);
+            mGotoLocationButton.setVisibility(View.INVISIBLE);
+            mChatButton.setVisibility(View.INVISIBLE);
+            mBarLayout.setVisibility(View.INVISIBLE);
+        }
+    }
+
     //btnNextClick
     public void nextSlide(View v) {
         // checking for last page
         // if last page home screen will be launched
-        int current = getItem(storiesSliderAdapter.getCurrentPosition());
+        int current = getItem(mStoriesSliderAdapter.getCurrentPosition());
 //        if (current < layouts.length) {
-        if (current < storiesSliderAdapter.getCount()) {
+        if (current < mStoriesSliderAdapter.getCount()) {
             // move to next screen
             mViewPager.setCurrentItem(current);
         } else {
@@ -136,25 +160,24 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
         }
     }
 
-
     private int getItem(int i) {
         return mViewPager.getCurrentItem() + i;
     }
 
     // set of Dots points
     private void addBottomDots(int currentPage) {
-        dots = new TextView[storiesSliderAdapter.getCount()];
+        bars = new TextView[mStoriesSliderAdapter.getCount()];
         mBarLayout.removeAllViews();
-        for (int i = 0; i < dots.length; i++) {
-            dots[i] = new TextView(this);
-            dots[i].setText(Html.fromHtml("<hr>"));
-            dots[i].setTextSize(40);
-            dots[i].setTextColor(getResources().getColor(R.color.gray));  // dot_inactive
-            mBarLayout.addView(dots[i]);
+        for (int i = 0; i < bars.length; i++) {
+            bars[i] = new TextView(this);
+            bars[i].setText(Html.fromHtml("<hr>"));
+            bars[i].setTextSize(40);
+            bars[i].setTextColor(getResources().getColor(R.color.gray));  // dot_inactive
+            mBarLayout.addView(bars[i]);
         }
 
-        if (dots.length > 0)
-            dots[currentPage].setTextColor(getResources().getColor(R.color.white)); // dot_active
+        if (bars.length > 0)
+            bars[currentPage].setTextColor(getResources().getColor(R.color.white)); // dot_active
     }
 
     @Override

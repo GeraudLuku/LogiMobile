@@ -14,7 +14,6 @@ import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.RecyclerAdapter.StoriesRecyclerAdapter;
 import com.geraud.android.gps1.Utils.Contacts;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -26,14 +25,14 @@ import java.util.ArrayList;
 
 public class BodyFragment extends Fragment {
 
-    private RecyclerView recyclerView;
-    private ArrayList<Stories> storiesList;
-    private StoriesRecyclerAdapter storiesRecyclerAdapter;
-    private DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference().child("stories");
-    private FirebaseAuth auth = FirebaseAuth.getInstance();
+    private RecyclerView mRecyclerView;
+    private ArrayList<Stories> mStoriesList;
+    private StoriesRecyclerAdapter mStoriesRecyclerView;
 
-    private Stories stories = new Stories();
-    private Stories story;
+    private DatabaseReference mDatabaseReference;
+
+    private Stories mStories;
+    private Stories mStory;
 
     public BodyFragment() {
         // Required empty public constructor
@@ -48,26 +47,30 @@ public class BodyFragment extends Fragment {
 
         Contacts contacts = new Contacts(getContext());
 
-        storiesList = new ArrayList<>();
-        storiesRecyclerAdapter = new StoriesRecyclerAdapter(storiesList, getContext());
+        mStories = new Stories();
+        mStory = new Stories();
+        mStoriesList = new ArrayList<>();
+        mStoriesRecyclerView = new StoriesRecyclerAdapter(mStoriesList, getContext());
 
-        recyclerView = view.findViewById(R.id.story_body_recycler);
-        recyclerView.setAdapter(storiesRecyclerAdapter);
-        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
+        mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORIES");
 
-        //cycle via all mContactList and get thier stories with a childEventListener
-        for (String user : contacts.getAllContacts()) {
+        mRecyclerView = view.findViewById(R.id.story_body_recycler);
+        mRecyclerView.setAdapter(mStoriesRecyclerView);
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
-            mDatabase.child(user).addValueEventListener(new ValueEventListener() {
+        //cycle via all mContactList and get their mStories with a childEventListener
+        for (String contact : contacts.getAllContacts()) {
+
+            mDatabaseReference.child(contact).addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     if (dataSnapshot.exists()) {
                         for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                            story = dc.getValue(Stories.class);
-                            stories.addStoryToArray(story);
+                            mStory = dc.getValue(Stories.class);
+                            mStories.addStoryToArray(mStory);
                         }
-                        storiesList.add(stories);
-                        storiesRecyclerAdapter.notifyDataSetChanged();
+                        mStoriesList.add(mStories);
+                        mStoriesRecyclerView.notifyDataSetChanged();
                     }
                 }
 

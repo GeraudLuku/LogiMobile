@@ -130,7 +130,6 @@ public class VideoPlayActivity extends AppCompatActivity implements
     protected void onResume() {
         super.onResume();
         if (mMediaPlayer == null) {
-
             SurfaceHolder surfaceHolder = mSurfaceView.getHolder();
             surfaceHolder.addCallback(this);
         }
