@@ -3,12 +3,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/bottom_chat_stories"
-        android:icon="@drawable/ic_status"
-        android:title="Stories"
-        app:showAsAction="always" />
-
-    <item
         android:id="@+id/bottom_chat_chats"
         android:icon="@drawable/ic_menu_send"
         android:title="Chats"

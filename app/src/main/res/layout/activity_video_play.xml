@@ -3,14 +3,20 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    >
+    android:layout_height="match_parent">
 
     <SurfaceView
         android:id="@+id/videoSurfaceView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-       />
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
+        android:layout_marginEnd="0dp"
+        android:layout_marginBottom="0dp" />
 
     <EditText
         android:id="@+id/descriptionEditText"
@@ -20,8 +26,11 @@
         android:layout_alignParentBottom="true"
         android:layout_marginStart="14dp"
         android:layout_marginBottom="15dp"
+        android:background="@drawable/edittext"
         android:ems="10"
-        android:inputType="textPersonName" />
+        android:hint="@string/what_about_this_video"
+        android:inputType="textPersonName"
+        android:padding="10dp" />
 
     <Button
         android:id="@+id/postButton"
@@ -30,6 +39,8 @@
         android:layout_alignTop="@+id/descriptionEditText"
         android:layout_alignParentEnd="true"
         android:layout_marginEnd="30dp"
-        android:text="Post" />
+        android:background="@drawable/button"
+        android:text="@string/post"
+        android:textColor="@android:color/white" />
 
 </RelativeLayout>

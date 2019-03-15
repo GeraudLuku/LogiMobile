@@ -25,7 +25,7 @@ import java.util.List;
 
 
 public class ChatsFragment extends Fragment {
-    private RecyclerView mChatList;
+    private RecyclerView mChatRecyclerView;
     private RecyclerView.Adapter mChatListAdapter;
     private RecyclerView.LayoutManager mChatListLayoutManager;
 
@@ -42,13 +42,13 @@ public class ChatsFragment extends Fragment {
 
         //initialising recycler view
         chatList = new ArrayList<>();
-        mChatList = view.findViewById(R.id.chatList);
-        mChatList.setNestedScrollingEnabled(false);
-        mChatList.setHasFixedSize(false);
+        mChatRecyclerView = view.findViewById(R.id.chatList);
+        mChatRecyclerView.setNestedScrollingEnabled(false);
+        mChatRecyclerView.setHasFixedSize(false);
         mChatListLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL , false);
-        mChatList.setLayoutManager(mChatListLayoutManager);
+        mChatRecyclerView.setLayoutManager(mChatListLayoutManager);
         mChatListAdapter = new ChatListAdapter(chatList,getContext());
-        mChatList.setAdapter(mChatListAdapter);
+        mChatRecyclerView.setAdapter(mChatListAdapter);
 
         //getting chats
         DatabaseReference mUserChatDB = FirebaseDatabase.getInstance().getReference().child("user").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("chat");

@@ -21,7 +21,7 @@ public class SliderAdapter extends PagerAdapter {
 
     private int[] slideImages = {
             R.drawable.locations1,
-            R.drawable.chat1,
+            R.drawable.locations1,
             R.drawable.privacy1,
             R.drawable.adaptive_map1,
             R.drawable.add_location

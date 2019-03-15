@@ -1,5 +1,7 @@
 package com.geraud.android.gps1.Stories;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -11,10 +13,13 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.geraud.android.gps1.GoogleMap.MapsActivity;
 import com.geraud.android.gps1.Models.Stories;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.RecyclerAdapter.StoriesSliderAdapter;
+import com.google.android.gms.maps.model.LatLng;
 
 import java.util.ArrayList;
 
@@ -22,6 +27,7 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
 
     public static final int SWIPE_THRESHOLE = 100;
     public static final int VELOCITY_THRESHOLE = 100;
+    private static final int FULLSCREEN_STORY_ACTIVITY = 00;
 
     private ViewPager mViewPager;
     private ImageView mUserImage;
@@ -40,6 +46,14 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
         public void onClick(View v) {
             switch (v.getId()){
                 case R.id.gotoLocationButton:
+                    if (mStoriesList.get(mStoriesSliderAdapter.getCurrentPosition()).getLocation()) {
+                        Intent intent = new Intent(getApplicationContext(), MapsActivity.class);
+                        intent.putExtra("latitude", mStoriesList.get(mStoriesSliderAdapter.getCurrentPosition()).getLatitude());
+                        intent.putExtra("longitude", mStoriesList.get(mStoriesSliderAdapter.getCurrentPosition()).getLongitude());
+                        setResult(Activity.RESULT_OK, intent);
+                        startActivity(intent);
+                    }else
+                        Toast.makeText(getApplicationContext(), "Location not available", Toast.LENGTH_SHORT).show();
                     break;
                 case R.id.chatButton:
                     break;

@@ -7,7 +7,7 @@
     android:clickable="true"
     android:layout_height="wrap_content"
     android:layout_margin="10dp"
-    android:padding="10dp">
+    android:padding="5dp">
 
     <de.hdodenhof.circleimageview.CircleImageView xmlns:app="http://schemas.android.com/apk/res-auto"
         android:id="@+id/friend_image"
@@ -15,8 +15,8 @@
         android:layout_height="90dp"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
-        android:src="@drawable/noimage"
-        app:civ_border_color="#ffff"
+        android:src="@drawable/test_image"
+        app:civ_border_color="@android:color/white"
         app:civ_border_width="2dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -25,29 +25,22 @@
         android:id="@+id/friend_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="40dp"
+        android:layout_marginStart="28dp"
         android:layout_marginTop="44dp"
-        android:text="TextView"
-        android:textSize="20sp"
+        android:textSize="15sp"
+        android:textColor="@color/black"
         app:layout_constraintStart_toEndOf="@+id/friend_image"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <TextView
-        android:id="@+id/friend_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        android:text="TextView"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Agbor Lambrice" />
 
     <CheckBox
         android:id="@+id/add"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginBottom="8dp"
+        android:layout_marginStart="344dp"
+        android:layout_marginBottom="24dp"
+        android:buttonTint="@color/colorPrimary"
+        android:checked="false"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 

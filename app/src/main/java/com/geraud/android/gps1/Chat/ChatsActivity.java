@@ -8,17 +8,19 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
 import android.view.View;
 
+import com.geraud.android.gps1.Camera.CameraActivity;
 import com.geraud.android.gps1.R;
 
 public class ChatsActivity extends AppCompatActivity {
 
-    private BottomNavigationView bottomNavigationView;
-    private FloatingActionButton floatingActionButton;
+    private BottomNavigationView mBottmNavigation;
+    private FloatingActionButton mNewChatBtn;
 
-    private ChatsFragment chatsFragment;
+    private ChatsFragment mChatsFragment;
 
 
     @Override
@@ -26,64 +28,46 @@ public class ChatsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chats);
 
-        //set title on actionbar
-        getSupportActionBar().setTitle("GPS App Name");
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
 
-        initialilizeFragment();
+        initialiseFragment();
 
-        chatsFragment = new ChatsFragment();
+        mChatsFragment = new ChatsFragment();
 
         //new chat button
-        floatingActionButton = findViewById(R.id.btn_new_chat);
-        floatingActionButton.setOnClickListener(new View.OnClickListener() {
+        mNewChatBtn = findViewById(R.id.btn_new_chat);
+        mNewChatBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(getApplicationContext() , FindUserActivity.class ));
+                startActivity(new Intent(getApplicationContext(), FindUserActivity.class));
             }
         });
 
         //bottom navigation
-        bottomNavigationView =findViewById(R.id.chat_activity_bottom_navigation);
-        bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+        mBottmNavigation = findViewById(R.id.chat_activity_bottom_navigation);
+        mBottmNavigation.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
-
-                Fragment container = getSupportFragmentManager().findFragmentById(R.id.chat_activity_main_container);
-
-                switch (menuItem.getItemId()){
-
-                    case R.id.bottom_chat_chats:
-                        replaceFragment(chatsFragment,container);
+                switch (menuItem.getItemId()) {
+                    case R.id.bottom_chat_camera:
+                        //open camera
+                        Intent cameraintent = new Intent(getApplicationContext(),CameraActivity.class);
+                        cameraintent.putExtra("chat","chat");
+                        startActivity(cameraintent);
                         return true;
-
-                   default:
-                       return false;
+                    default:
+                        return false;
                 }
             }
         });
 
     }
 
-    private void initialilizeFragment() {
+    private void initialiseFragment() {
         FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
-
-        fragmentTransaction.add(R.id.chat_activity_main_container, chatsFragment);
-
-        //fragmentTransaction.hide(notificationFragment);
-
+        fragmentTransaction.add(R.id.chat_activity_main_container, mChatsFragment);
         fragmentTransaction.commit();
     }
 
-    private void replaceFragment(Fragment fragment,Fragment curentFragment){
-        FragmentTransaction fragmentTransaction= getSupportFragmentManager().beginTransaction();
-
-        if(fragment == chatsFragment){
-            //fragmentTransaction.hide(accountFragment);
-        }
-
-        fragmentTransaction.show(fragment);
-
-        fragmentTransaction.commit();
-    }
-
-    }
+}

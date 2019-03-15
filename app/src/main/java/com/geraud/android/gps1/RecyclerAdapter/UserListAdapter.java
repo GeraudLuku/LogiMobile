@@ -46,21 +46,6 @@ public class UserListAdapter extends RecyclerView.Adapter<UserListAdapter.UserLi
         Glide.with(context).load(userList.get(position).getImage_uri())
                 .into(holder.mImage);
 
-        switch (userList.get(position).getStatus()){
-            case 0:
-                holder.mStatus.setText("Online");
-                break;
-            case 1:
-                holder.mStatus.setText("Offline");
-                break;
-            case 2:
-                holder.mStatus.setText("Away");
-                break;
-
-                default:
-                    break;
-
-        }
 
         holder.mAdd.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -85,7 +70,6 @@ public class UserListAdapter extends RecyclerView.Adapter<UserListAdapter.UserLi
         public UserListViewHolder(View view){
             super(view);
             mName = view.findViewById(R.id.friend_name);
-            mStatus = view.findViewById(R.id.friend_status);
             mImage = view.findViewById(R.id.friend_image);
             mLayout = view.findViewById(R.id.friend_container);
             mAdd = view.findViewById(R.id.add);

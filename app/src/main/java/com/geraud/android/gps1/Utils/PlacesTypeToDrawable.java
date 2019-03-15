@@ -33,7 +33,7 @@ public class PlacesTypeToDrawable {
         placeToIcon.put("Car Repair", R.drawable.car_repair);
         placeToIcon.put("Car Wash", R.drawable.car_wash);
         placeToIcon.put("Casino", R.drawable.casino);
-        placeToIcon.put("cemetery", R.drawable.Cemetery);
+        placeToIcon.put("cemetery", R.drawable.cemetery);
         placeToIcon.put("Church", R.drawable.church);
         placeToIcon.put("City Hall", R.drawable.civic_building);
         placeToIcon.put("Clothing Store", R.drawable.clothing_store);

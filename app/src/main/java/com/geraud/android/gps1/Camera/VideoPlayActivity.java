@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -19,17 +18,18 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.geraud.android.gps1.Chat.TransferActivity;
 import com.geraud.android.gps1.Models.Stories;
 import com.geraud.android.gps1.R;
+import com.geraud.android.gps1.Utils.RandomStringGenerator;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
-
-import java.util.Calendar;
 
 public class VideoPlayActivity extends AppCompatActivity implements
         SurfaceHolder.Callback,
@@ -43,20 +43,17 @@ public class VideoPlayActivity extends AppCompatActivity implements
     private IntentFilter mNoisyIntentFilter;
     private AudioBecomingNoisy mAudioBecomingNoisy;
 
-    DatabaseReference mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("status");
+    private DatabaseReference mDatabaseReference;
+    private StorageReference mStorageReference;
 
     private EditText mDescriptionEditText;
     private Button mPostButton;
 
-    public StorageReference storageReference;
 
     private boolean location = true;
-
     private double latitude = 0;
     private double longitude = 0;
-
-    private String DESCRIPTION;
-
+    private String mDescription;
     private static final String TYPE = "video";
 
     private class AudioBecomingNoisy extends BroadcastReceiver {
@@ -73,13 +70,23 @@ public class VideoPlayActivity extends AppCompatActivity implements
         setContentView(R.layout.activity_video_play);
 
         mDescriptionEditText = findViewById(R.id.descriptionEditText);
-        mPostButton= findViewById(R.id.postButton);
+        mPostButton = findViewById(R.id.postButton);
         mPostButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                postStatus();
+                if (getIntent().getExtras() != null) {
+                    Intent transferIntent = new Intent(getApplicationContext(), TransferActivity.class);
+                    transferIntent.putExtra("uri", mVideoUri);
+                    transferIntent.putExtra("text", mDescriptionEditText.getText().toString() == null ? " " : mDescriptionEditText.getText().toString());
+                    startActivity(transferIntent);
+                    finish();
+                } else
+                    postStatus();
             }
         });
+
+        mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORIES").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
+        mStorageReference = FirebaseStorage.getInstance().getReference();
 
         mSurfaceView = findViewById(R.id.videoSurfaceView);
         mSurfaceView.setOnTouchListener(new View.OnTouchListener() {
@@ -205,23 +212,19 @@ public class VideoPlayActivity extends AppCompatActivity implements
 
         final long currentTime = System.currentTimeMillis();
 
-        if (mDescriptionEditText.getText() == null) {
-            DESCRIPTION = "";
-        } else {
-            DESCRIPTION = mDescriptionEditText.getText().toString();
-        }
+        mDescription = mDescriptionEditText.getText().toString() == null ? " " : mDescriptionEditText.getText().toString();
 
         if (latitude == 0 && longitude == 0) {
             location = false;
         }
 
-        final StorageReference filepath = storageReference.child("Stories").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber() + "jpg");
+        final StorageReference filepath = mStorageReference.child("STORIES").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child(RandomStringGenerator.randomString() + ".jpg");
         filepath.putFile(mVideoUri).addOnCompleteListener(new OnCompleteListener<UploadTask.TaskSnapshot>() {
             @Override
             public void onComplete(@NonNull Task<UploadTask.TaskSnapshot> task) {
                 if (task.isSuccessful()) {
                     final String downloadURI = task.getResult().getDownloadUrl().toString();
-                    Stories stories = new Stories(location, downloadURI, DESCRIPTION, currentTime, latitude, longitude, TYPE,FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
+                    Stories stories = new Stories(location, downloadURI, mDescription, currentTime, latitude, longitude, TYPE, FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
                     mDatabaseReference.push().setValue(stories).addOnCompleteListener(new OnCompleteListener<Void>() {
                         @Override
                         public void onComplete(@NonNull Task<Void> task) {

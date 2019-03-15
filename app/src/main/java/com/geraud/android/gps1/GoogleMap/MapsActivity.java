@@ -92,6 +92,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
@@ -133,6 +134,7 @@ public class MapsActivity extends BaseActivity implements
     private static final int REQUEST_CHECK_SETTINGS = 123;
     private static final String POPUP_CONSTANT = "mPopup";
     private static final String POPUP_FORCE_SHOW_ICON = "setForceShowIcon";
+    private static final int FULLSCREEN_STORY_ACTIVITY = 00;
 
 
     LinearLayout mBottomPeekLayout;
@@ -499,6 +501,18 @@ public class MapsActivity extends BaseActivity implements
         @Override
         public void onMapReady(GoogleMap googleMap) {
             mMap = googleMap;
+
+            runOnUiThread(new Runnable() {
+                Calendar calendar = Calendar.getInstance();
+                int timeOfTheDay = calendar.get(Calendar.HOUR_OF_DAY);
+                @Override
+                public void run() {
+
+                    mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(getApplicationContext(),
+                            (timeOfTheDay >= 6 && timeOfTheDay < 17) ? R.raw.day_map : R.raw.night_map
+                            ));
+                }
+            });
 
             mLocationRequest = LocationRequest.create();
             mLocationRequest.setInterval(INTERVAL);
@@ -1330,6 +1344,12 @@ public class MapsActivity extends BaseActivity implements
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        if(resultCode == Activity.RESULT_OK){
+            double latitude = data.getDoubleExtra("latitude", 0);
+            double longitude = data.getDoubleExtra("longitude", 0);
+            goTO(new LatLng(latitude,longitude));
+        }
 
         if (requestCode == 1) {
             if (resultCode == Activity.RESULT_OK) {

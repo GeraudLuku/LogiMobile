@@ -27,6 +27,10 @@
     <string name="currently_tracking">Currently Tracking</string>
     <string name="_8h_ago">8h Ago</string>
     <string name="no_activites">No Activites</string>
+    <string name="what_about_this_pic">What About This Pic..</string>
+    <string name="what_about_this_video">What About This Video...</string>
+    <string name="post">Post</string>
+    <string name="send">Send</string>
 
     <string-array name="places_types">
         <item>What Type Of pLace is it?</item>

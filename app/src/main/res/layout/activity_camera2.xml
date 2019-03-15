@@ -23,21 +23,23 @@
 
     <Button
         android:id="@+id/closeCameraButton"
-        android:text="X"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="0dp"
-        android:layout_marginTop="0dp" />
+        android:layout_marginStart="14dp"
+        android:layout_marginTop="19dp"
+        android:background="@drawable/close_camera" />
 
     <Button
         android:id="@+id/galleryButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/cameraImageButton"
+        android:layout_width="54dp"
+        android:layout_height="54dp"
         android:layout_alignParentStart="true"
-        android:text="Gallery" />
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/gallery" />
 
     <Button
         android:id="@+id/cameraImageButton"
@@ -47,38 +49,41 @@
         android:layout_alignParentBottom="true"
         android:layout_marginEnd="137dp"
         android:layout_marginBottom="16dp"
-        android:text="Picture" />
+        android:text="Picture"
+        android:visibility="gone" />
 
     <Button
         android:id="@+id/flashButon"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
         android:layout_alignEnd="@+id/progressBar2"
         android:layout_alignParentTop="true"
-        android:layout_marginTop="23dp"
-        android:layout_marginEnd="-5dp"
-        android:text="Flash" />
+        android:layout_marginTop="19dp"
+        android:layout_marginEnd="54dp"
+        android:background="@drawable/flash_off" />
 
     <Button
         android:id="@+id/orientationButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:layout_marginEnd="15dp"
-        android:text="Flip" />
+        android:layout_marginTop="19dp"
+        android:layout_marginEnd="20dp"
+        android:background="@drawable/flip_camera" />
 
     <ProgressBar
         android:id="@+id/progressBar2"
         style="?android:progressBarStyleHorizontal"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:layout_above="@+id/galleryButton"
+        android:layout_width="100dp"
+        android:layout_height="64dp"
         android:layout_alignParentEnd="true"
-        android:layout_marginEnd="155dp"
-        android:layout_marginBottom="4dp"
-        android:progress="80"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="137dp"
+        android:layout_marginBottom="17dp"
+        android:progress="1"
+        android:max="11"
         android:progressDrawable="@drawable/circle"
-        android:visibility="invisible" />
+        android:visibility="visible" />
 
 </RelativeLayout>

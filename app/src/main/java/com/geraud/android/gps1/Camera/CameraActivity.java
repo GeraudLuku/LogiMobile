@@ -66,7 +66,8 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class CameraActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>, MediaStoreAdapter.OnClickThumbListener {
+public class CameraActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>,
+        MediaStoreAdapter.OnClickThumbListener {
 
     private final static int READ_EXTERNAL_STORAGE_PERMISSION_RESULT = 0;
     private final static int WRITE_EXTERNAL_STORAGE_PERMISSION_RESULT = 1;
@@ -158,8 +159,11 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                 mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mImageFileName))); // uri of the file can use it to send t other activity
                 sendBroadcast(mediaStoreUpdateIntent);
 
+                //if this activity was opened from another one open find user to send it to
                 //intent to the image full screen activity
                 Intent fullScreenIntent = new Intent(getApplicationContext(), FullScreenImageActivity.class);
+                if (getIntent().getExtras() != null)
+                    fullScreenIntent.putExtra("chat","chat");
                 fullScreenIntent.setData(Uri.fromFile(new File(mImageFileName)));
                 startActivity(fullScreenIntent);
 
@@ -175,7 +179,6 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
     }
 
     private MediaRecorder mMediaRecorder;
-    private Chronometer mChronometer;
     private int mTotalRotation;
     private CameraCaptureSession mPreviewCaptureSession;
     private CameraCaptureSession.CaptureCallback mPreviewCaptureCallback = new CameraCaptureSession.CaptureCallback() {
@@ -205,7 +208,6 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
     private CaptureRequest.Builder mCaptureRequestBuilder;
 
     private Button mOpenGalleryButton;
-    private Button mCaptureButton;
     private ProgressBar mProgressBar;
     private boolean mIsRecording = false;
 
@@ -226,9 +228,9 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                 }
                 startRecord();
                 mMediaRecorder.start();
-                mChronometer.setBase(SystemClock.elapsedRealtime());
-                mChronometer.setVisibility(View.VISIBLE);
-                mChronometer.start();
+//                mChronometer.setBase(SystemClock.elapsedRealtime());
+//                mChronometer.setVisibility(View.VISIBLE);
+//                mChronometer.start();
             } else
                 startPreview();
             //Toast.makeText(getApplicationContext(),"Connected To The Camera",Toast.LENGTH_SHORT).show();
@@ -276,8 +278,6 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
 
         mMediaRecorder = new MediaRecorder();
 
-        mProgressBar = findViewById(R.id.progressBar2);
-
         Button mCloseCamera = findViewById(R.id.closeCameraButton);
         mCloseCamera.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -303,30 +303,26 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
             }
         });
 
-        mChronometer = findViewById(R.id.chronometer);
         mTextureView = findViewById(R.id.textureView);
-        mCaptureButton = findViewById(R.id.cameraImageButton);
-        mCaptureButton.setOnClickListener(new View.OnClickListener() {
+
+        mProgressBar = findViewById(R.id.progressBar2);
+        mProgressBar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 lockFocus();
             }
         });
-
-        mCaptureButton.setOnLongClickListener(new View.OnLongClickListener() {
+        mProgressBar.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-
                 try {
-
-                    mCaptureButton.setOnTouchListener(new View.OnTouchListener() {
+                    mProgressBar.setOnTouchListener(new View.OnTouchListener() {
                         @Override
                         public boolean onTouch(View v, MotionEvent event) {
                             final long INTERVAL = 1000;
                             final long TIMEOUT = 10000;
                             switch (event.getAction()) {
                                 case MotionEvent.ACTION_DOWN:
-
                                     Log.i("ACTION_DOWN", "ACTION_DOWN::" + pause + " " + mIsRecording);
                                     if (longClickActive == false) {
                                         findViewById(R.id.thumbnailRecyclerView).setVisibility(View.INVISIBLE);
@@ -352,7 +348,7 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                                                     }
                                                 });
 
-                                                mIsRecording = true;
+                                                recording = true;
                                                 TimerTask task = new TimerTask() {
                                                     @Override
                                                     public void run() {
@@ -365,14 +361,18 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                                                                     @Override
                                                                     public void run() {
                                                                         recording = false;
-                                                                        // TODO Auto-generated method stub
-                                                                        mProgressBar.setProgress(0);
-                                                                        mProgressBar.setVisibility(View.INVISIBLE);
+                                                                        mIsRecording = false;
                                                                         // release the MediaRecorder object
                                                                         mMediaRecorder.stop();
                                                                         mMediaRecorder.reset();
 
+                                                                        Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                                                                        mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mVideoFileName))); // uri of the file can use it to send t other activity
+                                                                        sendBroadcast(mediaStoreUpdateIntent);
+
                                                                         Intent fullScreenIntent = new Intent(getApplicationContext(), VideoPlayActivity.class);
+                                                                        if (getIntent().getExtras() != null)
+                                                                            fullScreenIntent.putExtra("chat","chat");
                                                                         fullScreenIntent.setData(Uri.fromFile(new File(mVideoFileName)));
                                                                         startActivity(fullScreenIntent);
 
@@ -384,8 +384,8 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                                                             }
                                                             return;
                                                         }
-                                                        elapsedSecs = remaningSecs;
-                                                        mProgressBar.setProgress((int) (elapsedSecs / 1000));
+//                                                        elapsedSecs = remaningSecs;
+//                                                        mProgressBar.setProgress((int) (elapsedSecs / 1000));
                                                         Log.i("TIME camera video", "Milli::" + (remaningSecs / 1000));
 
                                                     }
@@ -404,7 +404,7 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                                                         }
                                                     }
                                                 });
-                                                mIsRecording = true;
+                                                recording = true;
                                                 TimerTask task = new TimerTask() {
                                                     @Override
                                                     public void run() {
@@ -416,14 +416,18 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                                                                     @Override
                                                                     public void run() {
                                                                         recording = false;
-                                                                        // TODO Auto-generated method stub
-                                                                        // mediaRecorder.stop(); // stop the recording
+                                                                        mIsRecording = false;
                                                                         mMediaRecorder.stop();
                                                                         mMediaRecorder.reset(); // release the MediaRecorder object
                                                                         mProgressBar.setProgress(0);
-                                                                        mProgressBar.setVisibility(View.INVISIBLE);
+
+                                                                        Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                                                                        mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mVideoFileName))); // uri of the file can use it to send t other activity
+                                                                        sendBroadcast(mediaStoreUpdateIntent);
 
                                                                         Intent fullScreenIntent = new Intent(getApplicationContext(), VideoPlayActivity.class);
+                                                                        if (getIntent().getExtras() != null)
+                                                                            fullScreenIntent.putExtra("chat","chat");
                                                                         fullScreenIntent.setData(Uri.fromFile(new File(mVideoFileName)));
                                                                         startActivity(fullScreenIntent);
 
@@ -438,7 +442,7 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                                                             return;
                                                         }
                                                         elapsedSecs = 10000 - elapsed;
-                                                        mProgressBar.setProgress((int) (elapsedSecs / 1000));
+                                                        //mProgressBar.setProgress((int) (elapsedSecs / 1000));
                                                         Log.i("Time elapsed", "Milli::" + (elapsedSecs / 1000));
                                                         remaningSecs = elapsedSecs;
                                                         remaningSecs = Math.round(remaningSecs);
@@ -456,7 +460,6 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                                     longClickActive = false;
                                     if (recording) {
                                         // stop recording and release camera
-                                        mProgressBar.setProgress((int) (elapsedSecs / 1000));
                                         timer.cancel();
                                         pause = true;
                                         mIsRecording = false;
@@ -464,7 +467,13 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                                         mMediaRecorder.stop();
                                         mMediaRecorder.reset(); // release the MediaRecorder object
 
+                                        Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                                        mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mVideoFileName))); // uri of the file can use it to send t other activity
+                                        sendBroadcast(mediaStoreUpdateIntent);
+
                                         Intent fullScreenIntent = new Intent(getApplicationContext(), VideoPlayActivity.class);
+                                        if (getIntent().getExtras() != null)
+                                            fullScreenIntent.putExtra("chat","chat");
                                         fullScreenIntent.setData(Uri.fromFile(new File(mVideoFileName)));
                                         startActivity(fullScreenIntent);
                                     }
@@ -486,25 +495,6 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
         mOpenGalleryButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mIsRecording) {
-                    mChronometer.stop();
-                    mChronometer.setVisibility(View.INVISIBLE);
-                    mIsRecording = false;
-                    mOpenGalleryButton.setBackgroundColor(Color.GREEN);
-                    mMediaRecorder.stop();
-                    mMediaRecorder.reset();
-
-                    Intent fullScreenIntent = new Intent(getApplicationContext(), VideoPlayActivity.class);
-                    fullScreenIntent.setData(Uri.fromFile(new File(mVideoFileName)));
-                    startActivity(fullScreenIntent);
-
-                    Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                    mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mVideoFileName))); // uri of the file can use it to send t other activity
-                    sendBroadcast(mediaStoreUpdateIntent);
-//                    startPreview();
-                } else {
-                    checkWriteExternalStoragePermission();
-                }
                 openGallery();
             }
         });
@@ -581,11 +571,13 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                         mPreviewCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(), null, null);
                         flashButton.setBackgroundColor(Color.GRAY);
                         isTorchOn = false;
+                        flashButton.setBackground(getResources().getDrawable(R.drawable.flash_off));
                     } else {
                         mCaptureRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH);
                         mPreviewCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(), null, null);
                         flashButton.setBackgroundColor(Color.WHITE);
                         isTorchOn = true;
+                        flashButton.setBackground(getResources().getDrawable(R.drawable.flash_on));
                     }
                 }
             }
@@ -601,9 +593,9 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
             flashButton.setVisibility(View.VISIBLE);
 
             if (isTorchOn) {
-                flashButton.setBackgroundColor(Color.WHITE);
+                flashButton.setBackground(getResources().getDrawable(R.drawable.flash_on));
             } else {
-                flashButton.setBackgroundColor(Color.GRAY);
+                flashButton.setBackground(getResources().getDrawable(R.drawable.flash_off));
             }
 
         } else {
@@ -750,7 +742,6 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
                 mIsRecording = true;
-                mOpenGalleryButton.setBackgroundColor(Color.RED);
                 try {
                     createVideoFileName();
                 } catch (IOException e) {
@@ -767,7 +758,6 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
 
         } else {
             mIsRecording = true;
-            mOpenGalleryButton.setBackgroundColor(Color.RED);
             try {
                 createVideoFileName();
             } catch (IOException e) {
@@ -775,9 +765,9 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
             }
             startRecord();
             mMediaRecorder.start();
-            mChronometer.setBase(SystemClock.elapsedRealtime());
-            mChronometer.setVisibility(View.VISIBLE);
-            mChronometer.start();
+//            mChronometer.setBase(SystemClock.elapsedRealtime());
+//            mChronometer.setVisibility(View.VISIBLE);
+//            mChronometer.start();
         }
     }
 
@@ -800,7 +790,6 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
             case WRITE_EXTERNAL_STORAGE_PERMISSION_RESULT:
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     mIsRecording = true;
-                    mOpenGalleryButton.setBackgroundColor(Color.RED);
                     try {
                         createVideoFileName();
                     } catch (IOException e) {
