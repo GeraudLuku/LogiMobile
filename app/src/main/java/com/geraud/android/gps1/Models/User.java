@@ -52,24 +52,12 @@ public class User implements Serializable {
         return image_uri;
     }
 
-    public void setImage_uri(String image_uri) {
-        this.image_uri = image_uri;
-    }
-
     public Integer getStatus() {
         return status;
     }
 
-    public void setStatus(Integer status) {
-        this.status = status;
-    }
-
     public String getPhone() {
         return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
     }
 
     public Boolean getSelected() {

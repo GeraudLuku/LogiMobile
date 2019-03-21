@@ -1,7 +1,6 @@
 package com.geraud.android.gps1.RecyclerAdapter;
 
 import android.content.Context;
-import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -11,28 +10,19 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.bumptech.glide.Glide;
-import com.geraud.android.gps1.Chat.ChatActivity;
 import com.geraud.android.gps1.Models.Chat;
-import com.geraud.android.gps1.Models.User;
 import com.geraud.android.gps1.R;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 
 import java.util.List;
 
 public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ChatListViewHolder> {
 
-    List<Chat> chatList;
-    Context context;
+    private List<Chat> mChatList;
+    private Context mContext;
 
     public ChatListAdapter(List<Chat> ChatList, Context context) {
-        this.chatList = ChatList;
-        this.context = context;
+        this.mChatList = ChatList;
+        this.mContext = context;
     }
 
     @NonNull
@@ -49,7 +39,7 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ChatLi
     @Override
     public void onBindViewHolder(@NonNull final ChatListViewHolder holder, final int position) {
 
-
+        holder.mTitle.setText(mChatList.get(position).getChatId());
 
         holder.mLayout.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -62,12 +52,12 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ChatLi
 
     @Override
     public int getItemCount() {
-        return chatList.size();
+        return mChatList.size();
     }
 
     public class ChatListViewHolder extends RecyclerView.ViewHolder {
         public ImageView mImage;
-        public TextView mTitle, mStatus , mLastMessage;
+        public TextView mTitle, mTimeStamp, mLastMessage;
         public LinearLayout mLayout;
 
         public ChatListViewHolder(View view) {
@@ -75,7 +65,7 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ChatLi
             mTitle = view.findViewById(R.id.title);
             mLayout = view.findViewById(R.id.layout);
             mImage = view.findViewById(R.id.image);
-            mStatus= view.findViewById(R.id.status);
+            mTimeStamp = view.findViewById(R.id.timestamp);
             mLastMessage= view.findViewById(R.id.lastMessage);
 
         }

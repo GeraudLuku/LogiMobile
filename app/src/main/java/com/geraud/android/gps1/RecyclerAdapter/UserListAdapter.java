@@ -20,19 +20,19 @@ import java.util.List;
 
 public class UserListAdapter extends RecyclerView.Adapter<UserListAdapter.UserListViewHolder> {
 
-    List<User> userList;
-    Context context;
+    private List<User> mUserList;
+    private Context mContext;
 
-    public UserListAdapter(List<User> userList , Context context){
-        this.userList = userList;
-        this.context = context;
+    public UserListAdapter(List<User> userList, Context context) {
+        this.mUserList = userList;
+        this.mContext = context;
     }
 
     @NonNull
     @Override
     public UserListViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
-        View layoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.user_item, null , false);
-        RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT , ViewGroup.LayoutParams.WRAP_CONTENT);
+        View layoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.user_item, null, false);
+        RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         layoutView.setLayoutParams(lp);
 
         UserListViewHolder rcv = new UserListViewHolder(layoutView);
@@ -42,34 +42,39 @@ public class UserListAdapter extends RecyclerView.Adapter<UserListAdapter.UserLi
     @Override
     public void onBindViewHolder(@NonNull UserListViewHolder holder, final int position) {
 
-        holder.mName.setText(userList.get(position).getName());
-        Glide.with(context).load(userList.get(position).getImage_uri())
+        holder.mName.setText(mUserList.get(position).getName());
+
+        holder.mPhone.setText(mUserList.get(position).getPhone().toUpperCase());
+
+        Glide.with(mContext).load(mUserList.get(position).getImage_uri())
                 .into(holder.mImage);
 
 
         holder.mAdd.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                userList.get(position).setSelected(isChecked);
+                mUserList.get(position).setSelected(isChecked);
             }
         });
     }
 
     @Override
     public int getItemCount() {
-        return userList.size();
+        return mUserList.size();
     }
 
     public class UserListViewHolder extends RecyclerView.ViewHolder {
 
         public ImageView mImage;
-        public TextView mName , mStatus;
+        public TextView mName, mPhone,mStatus;
         public LinearLayout mLayout;
         public CheckBox mAdd;
 
-        public UserListViewHolder(View view){
+        public UserListViewHolder(View view) {
             super(view);
+
             mName = view.findViewById(R.id.friend_name);
+            mName = view.findViewById(R.id.friend_number);
             mImage = view.findViewById(R.id.friend_image);
             mLayout = view.findViewById(R.id.friend_container);
             mAdd = view.findViewById(R.id.add);

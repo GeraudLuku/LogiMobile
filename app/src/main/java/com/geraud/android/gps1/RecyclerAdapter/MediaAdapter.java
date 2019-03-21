@@ -14,38 +14,38 @@ import com.geraud.android.gps1.R;
 
 import java.util.ArrayList;
 
-public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.MediaViewHolder> {
+public class MediaAdapter extends RecyclerView.Adapter<MediaAdapter.ViewHolder> {
 
-    ArrayList<String> mediaList;
-    Context context;
+    private ArrayList<String> mMediaList;
+    private Context mContext;
 
     public MediaAdapter(ArrayList<String> mediaList, Context context){
-        this.context = context;
-        this.mediaList = mediaList;
+        this.mContext = context;
+        this.mMediaList = mediaList;
     }
 
     @NonNull
     @Override
-    public MediaViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
         View layoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.media_item,null,false);
-        MediaViewHolder mediaViewHolder = new MediaViewHolder(layoutView);
-        return mediaViewHolder;
+        return new ViewHolder(layoutView);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull MediaViewHolder mediaViewHolder, int i) {
-        Glide.with(context).load(Uri.parse(mediaList.get(i))).into(mediaViewHolder.mMedia);
+    public void onBindViewHolder(@NonNull ViewHolder mediaViewHolder, int position) {
+        Glide.with(mContext).load(Uri.parse(mMediaList.get(position))).into(mediaViewHolder.mMedia);
     }
 
     @Override
     public int getItemCount() {
-        return mediaList.size();
+        return mMediaList.size();
     }
 
-    public class MediaViewHolder extends RecyclerView.ViewHolder{
+    public class ViewHolder extends RecyclerView.ViewHolder{
 
         ImageView mMedia;
-        public MediaViewHolder(@NonNull View itemView) {
+
+        public ViewHolder(@NonNull View itemView) {
             super(itemView);
             mMedia = itemView.findViewById(R.id.media);
         }

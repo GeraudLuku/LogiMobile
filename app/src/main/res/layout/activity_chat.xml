@@ -10,42 +10,50 @@
         android:id="@+id/appBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:minHeight="?attr/actionBarSize">
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
+        android:layout_marginEnd="0dp"
+        android:minHeight="?attr/actionBarSize"
+        android:padding="3dp">
 
         <android.support.v7.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:minHeight="?attr/actionBarSize"
-            app:layout_collapseMode="pin"
-            app:titleTextColor="@color/white">
+            app:layout_collapseMode="pin">
 
             <de.hdodenhof.circleimageview.CircleImageView
+                android:id="@+id/image"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
-                android:id="@+id/image"
                 android:padding="5dp"
-                />
+                android:src="@drawable/noimage" />
+
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Luku Geraud"
                 android:id="@+id/name"
-                />
-            <ImageView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:textColor="@android:color/white"
+                tools:text="Luku Geraud" />
+
+            <ImageView
                 android:id="@+id/mapLocation"
-                android:src="@drawable/direction_btn"
-                android:layout_marginLeft="100dp"
-                />
-            <ImageView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="100dp"
+                android:src="@drawable/direction" />
+
+            <ImageView
                 android:id="@+id/call"
-                android:src="@drawable/call_btn"
-                android:layout_marginLeft="20dp"
-                />
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:src="@drawable/call_chat" />
 
         </android.support.v7.widget.Toolbar>
 
@@ -55,7 +63,12 @@
         android:id="@+id/messageList"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/sendLayout" />
+        android:layout_below="@+id/appBar"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="0dp" />
 
     <LinearLayout
         android:id="@+id/sendLayout"
@@ -67,7 +80,12 @@
         <android.support.v7.widget.RecyclerView
             android:id="@+id/mediaList"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="100dp"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:layout_marginBottom="5dp"
+            android:orientation="vertical"
+            android:padding="5dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -78,21 +96,34 @@
                 android:id="@+id/message"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_margin="5dp"
                 android:layout_weight="0.8"
-                android:hint="message....." />
+                android:background="@drawable/edittext"
+                android:hint="@string/message"
+                android:padding="10dp" />
 
-            <Button
+            <ImageButton
                 android:id="@+id/addMedia"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:layout_marginTop="17dp"
+                android:layout_marginBottom="17dp"
                 android:layout_weight="0.2"
+                android:background="@android:color/transparent"
+                android:src="@drawable/clip"
                 android:text="addMedia" />
 
-            <Button
+            <ImageButton
                 android:id="@+id/send"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="17dp"
+                android:layout_marginEnd="5dp"
+                android:layout_marginBottom="17dp"
                 android:layout_weight="0.2"
+                android:background="@android:color/transparent"
+                android:src="@drawable/send"
                 android:text="send" />
         </LinearLayout>
 

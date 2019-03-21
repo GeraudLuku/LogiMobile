@@ -13,7 +13,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 
-import com.bumptech.glide.Glide;
 import com.geraud.android.gps1.Models.Chat;
 import com.geraud.android.gps1.Models.Message;
 import com.geraud.android.gps1.Models.User;
@@ -28,7 +27,6 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -39,19 +37,19 @@ import java.util.List;
 import java.util.Map;
 
 public class ChatActivity extends AppCompatActivity {
-    private RecyclerView mChat, mMedia;
+
+    private RecyclerView mChatRecyclerView, mMediaRecyclerView;
     private RecyclerView.Adapter mChatAdapter, mMediaAdapter;
-    private RecyclerView.LayoutManager mChatLayoutManager , mMediaLayoutManager;
-    private String TYPE = "single";
-    private String intentChatId = null;
+    private RecyclerView.LayoutManager mChatLayoutManager, mMediaLayoutManager;
 
-    List<Message> messageList;
+    private String mChatType;
 
-    Chat mChatObject;
+    private Chat mChatObject;
 
-    DatabaseReference mChatMessagesDb,mChatInfoDb;
+    private DatabaseReference mChatMessagesDb, mChatInfoDb;
 
-    private ImageView mMapLocation,mCall,mImage;
+    private ImageView mMapLocation, mCall, mImage;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,8 +57,6 @@ public class ChatActivity extends AppCompatActivity {
 
         // Find the toolbar view inside the activity layout
         Toolbar toolbar = findViewById(R.id.toolbar);
-        // Sets the Toolbar to act as the ActionBar for this Activity window.
-        // Make sure the toolbar exists in the activity and is not null
         setSupportActionBar(toolbar);
         getSupportActionBar().setHomeButtonEnabled(true);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -68,16 +64,12 @@ public class ChatActivity extends AppCompatActivity {
         mMapLocation = toolbar.findViewById(R.id.mapLocation);
         mImage = toolbar.findViewById(R.id.image);
         mCall = toolbar.findViewById(R.id.call);
+        mMessage = findViewById(R.id.message);
 
         mChatObject = (Chat) getIntent().getSerializableExtra("chatObject");
+        mChatType = (mChatObject.getUserObjectArrayList().size() > 1) ? "group" : "single"; //check if it is a group Chat or single Chat
 
-        //check if it is a group Chat or single Chat
-        if (mChatObject.getUserObjectArrayList().size() > 2){
-            //means its a groupChat
-            TYPE = "multiple";
-        }
-
-        mChatMessagesDb = FirebaseDatabase.getInstance().getReference().child("chat").child(mChatObject.getChatId()).child("messages");
+        mChatMessagesDb = FirebaseDatabase.getInstance().getReference().child("CHAT").child(mChatObject.getChatId()).child("messages");
 
         Button mSend = findViewById(R.id.send);
         mSend.setOnClickListener(new View.OnClickListener() {
@@ -113,14 +105,14 @@ public class ChatActivity extends AppCompatActivity {
                         text = dataSnapshot.child("text").getValue().toString();
                     if (dataSnapshot.child("creator").getValue() != null)
                         creatorID = dataSnapshot.child("creator").getValue().toString();
-                    if (dataSnapshot.child("media").getChildrenCount() > 0){
+                    if (dataSnapshot.child("media").getChildrenCount() > 0) {
                         for (DataSnapshot mediaSnapshot : dataSnapshot.child("media").getChildren())
                             mediaUrlList.add(mediaSnapshot.getValue().toString());
                     }
 
-                    Message mMessage = new Message(dataSnapshot.getKey(), text, creatorID , mediaUrlList);
-                    messageList.add(mMessage);
-                    mChatLayoutManager.scrollToPosition(messageList.size() - 1); //scroll to the last message automatically
+                    Message mMessage = new Message(dataSnapshot.getKey(), text, creatorID, System.currentTimeMillis(), mediaUrlList).withType(mChatType);
+                    mMessageList.add(mMessage);
+                    mChatLayoutManager.scrollToPosition(mMessageList.size() - 1); //scroll to the last message automatically
                     mChatAdapter.notifyDataSetChanged();
                 }
             }
@@ -152,98 +144,98 @@ public class ChatActivity extends AppCompatActivity {
     private EditText mMessage;
 
     private void sendMessage() {
-        mMessage = findViewById(R.id.message);
 
-            String messageId = mChatMessagesDb.push().getKey();
-            final DatabaseReference newMessagDb = mChatMessagesDb.push();
+        String messageId = mChatMessagesDb.push().getKey();
+        final DatabaseReference newMessageDb = mChatMessagesDb.child(messageId);
 
-            final Map newMessageMap = new HashMap<>();
+        final Map newMessageMap = new HashMap<>();
 
-            if (!mMessage.getText().toString().isEmpty())
+        if (!mMessage.getText().toString().isEmpty())
             newMessageMap.put("text", mMessage.getText().toString());
 
-            newMessageMap.put("creator", FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
+        newMessageMap.put("creator", FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
 
-            if (!mediaUriList.isEmpty()){
-                for (String mediaUri : mediaUriList){
-                    String mediaId = newMessagDb.child("media").push().getKey();
-                    mediaIdList.add(mediaId);
-                    final StorageReference filepath = FirebaseStorage.getInstance().getReference().child("chat").child(mChatObject.getChatId()).child(messageId).child(mediaId);
+        if (!mMediaUriList.isEmpty()) {
+            for (String mediaUri : mMediaUriList) {
+                String mediaId = newMessageDb.child("media").push().getKey();
+                mediaIdList.add(mediaId);
+                final StorageReference filepath = FirebaseStorage.getInstance().getReference().child("chat").child(mChatObject.getChatId()).child(messageId).child(mediaId);
 
-                    UploadTask uploadTask = filepath.putFile(Uri.parse(mediaUri));
-                    uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                        @Override
-                        public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                            filepath.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-                                @Override
-                                public void onSuccess(Uri uri) {
-                                    newMessageMap.put("/media/"+ mediaIdList.get(totalMediaUploaded) + "/", uri.toString());
-                                    totalMediaUploaded++;
-                                    if (totalMediaUploaded == mediaUriList.size()){
-                                        //all images uploaded succesfully
-                                        updateDatabaseWithNewMessage(newMessagDb , newMessageMap);
-                                    }
-                                }
-                            });
-                        }
-                    });
-                }
-            }else {
-                if (!mMessage.getText().toString().isEmpty()){
-                    updateDatabaseWithNewMessage(newMessagDb , newMessageMap);
-                }
+                UploadTask uploadTask = filepath.putFile(Uri.parse(mediaUri));
+                uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                    @Override
+                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                        filepath.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                            @Override
+                            public void onSuccess(Uri uri) {
+                                newMessageMap.put("/media/" + mediaIdList.get(totalMediaUploaded) + "/", uri.toString());
+                                totalMediaUploaded++;
+                                if (totalMediaUploaded == mMediaUriList.size()) //all images uploaded succesfully
+                                    updateDatabaseWithNewMessage(newMessageDb, newMessageMap);
+
+                            }
+                        });
+                    }
+                });
             }
-        mMessage.setText(null);
+        } else if (!mMessage.getText().toString().isEmpty())
+            updateDatabaseWithNewMessage(newMessageDb, newMessageMap);
+
+
     }
 
-    private void updateDatabaseWithNewMessage(DatabaseReference newMessageDb , Map newMessageMap){
+    private void updateDatabaseWithNewMessage(DatabaseReference newMessageDb, Map newMessageMap) {
+
         newMessageDb.updateChildren(newMessageMap);
         mMessage.setText(null);
-        mediaUriList.clear();
+        mMediaUriList.clear();
         mediaIdList.clear();
         mMediaAdapter.notifyDataSetChanged();
 
         String message;
         if (newMessageMap.get("text") != null) {
             message = newMessageMap.get("text").toString();
-        }else
+        } else
             message = "Sent Media";
 
-        for (User mUser : mChatObject.getUserObjectArrayList()){
-            if (!mUser.getPhone().equals(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber())){
-                new SendNotification(mUser.getNotificationKey(),mChatObject.getChatId(),message,FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber(),TYPE,"","");
-            }
-        }
-    }
-    private void initializeMessage() {
-        messageList = new ArrayList<>();
-        mChat = findViewById(R.id.messageList);
-        mChat.setNestedScrollingEnabled(false);
-        mChat.setHasFixedSize(false);
-        mChatLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false);
-        mChat.setLayoutManager(mChatLayoutManager);
-        mChatAdapter = new MessageAdapter(messageList, this);
-        mChat.setAdapter(mChatAdapter);
+        for (User mUser : mChatObject.getUserObjectArrayList())
+            if (!mUser.getPhone().equals(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()))
+                new SendNotification(mUser.getNotificationKey(), mChatObject.getChatId(), message, FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber(), mChatType, "", "");
+
     }
 
-    int PICK_IMAGE_INTENT = 1;
-    ArrayList<String> mediaUriList = new ArrayList<>();
+    private List<Message> mMessageList;
+
+    private void initializeMessage() {
+        mMessageList = new ArrayList<>();
+        mChatRecyclerView = findViewById(R.id.messageList);
+        mChatRecyclerView.setNestedScrollingEnabled(false);
+        mChatRecyclerView.setHasFixedSize(false);
+        mChatLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false);
+        mChatRecyclerView.setLayoutManager(mChatLayoutManager);
+        mChatAdapter = new MessageAdapter(mMessageList, this);
+        mChatRecyclerView.setAdapter(mChatAdapter);
+    }
+
+    ArrayList<String> mMediaUriList;
 
     private void initializeMedia() {
-        mediaUriList = new ArrayList<>();
-        mMedia = findViewById(R.id.mediaList);
-        mMedia.setNestedScrollingEnabled(false);
-        mMedia.setHasFixedSize(false);
+        mMediaUriList = new ArrayList<>();
+        mMediaRecyclerView = findViewById(R.id.mediaList);
+        mMediaRecyclerView.setNestedScrollingEnabled(false);
+        mMediaRecyclerView.setHasFixedSize(false);
         mMediaLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.HORIZONTAL, false);
-        mMedia.setLayoutManager(mMediaLayoutManager);
-        mMediaAdapter = new MediaAdapter(mediaUriList, this);
-        mMedia.setAdapter(mMediaAdapter);
+        mMediaRecyclerView.setLayoutManager(mMediaLayoutManager);
+        mMediaAdapter = new MediaAdapter(mMediaUriList, this);
+        mMediaRecyclerView.setAdapter(mMediaAdapter);
     }
+
+    private static final int PICK_IMAGE_INTENT = 1;
 
     private void openGallery() {
         Intent intent = new Intent();
         intent.setType("image/*");
-        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true); //alowyou to select multiple images
+        intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true); //allow you to select multiple images
         intent.setAction(intent.ACTION_GET_CONTENT);
         startActivityForResult(Intent.createChooser(intent, "Select Picture(s)"), PICK_IMAGE_INTENT);
     }
@@ -254,11 +246,10 @@ public class ChatActivity extends AppCompatActivity {
         if (resultCode == RESULT_OK)
             if (requestCode == PICK_IMAGE_INTENT) {
                 if (data.getClipData() == null) { //if there are no multiple selections
-                    mediaUriList.add(data.getData().toString());
-                }else {
-                    for (int i = 0 ; i <= data.getClipData().getItemCount() ; i++)
-                        mediaUriList.add(data.getClipData().getItemAt(i).getUri().toString());
-                }
+                    mMediaUriList.add(data.getData().toString());
+                } else
+                    for (int i = 0; i <= data.getClipData().getItemCount(); i++)
+                        mMediaUriList.add(data.getClipData().getItemAt(i).getUri().toString());
                 mMediaAdapter.notifyDataSetChanged();
             }
     }

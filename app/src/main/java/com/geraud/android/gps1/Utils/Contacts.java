@@ -19,14 +19,14 @@ import java.util.List;
 public class Contacts {
 
     private Context mContext;
-    private DatabaseReference mDatabaseReference = FirebaseDatabase.getInstance().getReference();
+    private DatabaseReference mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("USER");
     private List<String> mContacts = new ArrayList<>();
 
     public Contacts(Context context) {
         this.mContext = context;
     }
 
-    //getting ISO (Country code +237,,,, )
+    //getting ISO (CM,ENG,,, )
     private String getCountryISO() {
         String iso = null;
 
@@ -41,6 +41,7 @@ public class Contacts {
     public List<String> getAllContacts() {
 
         String ISOPrefix = getCountryISO();
+
         Uri uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
         Cursor cursor = mContext.getContentResolver().query(uri, new String[]{ContactsContract.CommonDataKinds.Phone.NUMBER}, null, null, null);
         cursor.moveToFirst();
@@ -54,7 +55,7 @@ public class Contacts {
             phone = phone.replace("(", "");
             phone = phone.replace(")", "");
 
-            if (!String.valueOf(phone.charAt(0)).equals("+")) //if the phone number doesnt have a country code then automatically the number is in your country
+            if (!String.valueOf(phone.charAt(0)).equals("+")) //if the phone number doesn't have a country code then the number is considered of your country
                 phone = ISOPrefix + phone;
 
             checkIfUsesApp(phone);
@@ -66,7 +67,7 @@ public class Contacts {
 
     private void checkIfUsesApp(final String phone) {
         //get the mContacts from firebase
-        Query query = mDatabaseReference.child("USER").orderByChild("phone").equalTo(phone);
+        Query query = mDatabaseReference.orderByChild("phone").equalTo(phone);
         query.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {

@@ -3,6 +3,7 @@ package com.geraud.android.gps1.Chat;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -25,12 +26,14 @@ import java.util.List;
 
 
 public class ChatsFragment extends Fragment {
+
     private RecyclerView mChatRecyclerView;
     private RecyclerView.Adapter mChatListAdapter;
     private RecyclerView.LayoutManager mChatListLayoutManager;
 
-    List<Chat> chatList;
-    public ChatsFragment (){
+    private List<Chat> mChatList;
+
+    public ChatsFragment() {
         // Required empty public constructor
     }
 
@@ -41,31 +44,35 @@ public class ChatsFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_chats, container, false);
 
         //initialising recycler view
-        chatList = new ArrayList<>();
+        mChatList = new ArrayList<>();
         mChatRecyclerView = view.findViewById(R.id.chatList);
         mChatRecyclerView.setNestedScrollingEnabled(false);
         mChatRecyclerView.setHasFixedSize(false);
-        mChatListLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL , false);
+        mChatRecyclerView.addItemDecoration(new DividerItemDecoration(mChatRecyclerView.getContext(), DividerItemDecoration.VERTICAL)); // list divider
+        mChatListLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false);
         mChatRecyclerView.setLayoutManager(mChatListLayoutManager);
-        mChatListAdapter = new ChatListAdapter(chatList,getContext());
+        mChatListAdapter = new ChatListAdapter(mChatList, getContext());
         mChatRecyclerView.setAdapter(mChatListAdapter);
 
-        //getting chats
-        DatabaseReference mUserChatDB = FirebaseDatabase.getInstance().getReference().child("user").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("chat");
+        getUserChatList();
+
+        return view;
+    }
+
+    private void getUserChatList() {
+        DatabaseReference mUserChatDB = FirebaseDatabase.getInstance().getReference().child("USER").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("chat");
         mUserChatDB.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()){
-                    for (DataSnapshot dc : dataSnapshot.getChildren()){
-                        Chat mChat = new Chat(dc.getKey()); //getting all the ids of the chat children
-                        Boolean exists = false;
-                        for (Chat mChatIterator : chatList){  //method used not to duplicate chat ids in the chats activity
+                if (dataSnapshot.exists()) {
+                    for (DataSnapshot childSnapshot : dataSnapshot.getChildren()) {
+                        Chat mChat = new Chat(childSnapshot.getKey()); //getting all the ids of the chat children
+
+                        for (Chat mChatIterator : mChatList)   //method used not to duplicate chat ids in the chats activity
                             if (mChatIterator.getChatId().equals(mChat.getChatId()))
-                                exists = true;
-                        }
-                        if (exists)
-                            continue;
-                        chatList.add(mChat);
+                                continue; //stop here in the code and  goto next iteration in for loop
+
+                        mChatList.add(mChat);
                         getChatData(mChat.getChatId());
                     }
                 }
@@ -77,8 +84,6 @@ public class ChatsFragment extends Fragment {
             }
         });
 
-
-        return view;
     }
 
     //thi is where you will get the info of all the chats including the destinator , last message and timestamp
@@ -87,7 +92,7 @@ public class ChatsFragment extends Fragment {
         mChatDB.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()){
+                if (dataSnapshot.exists()) {
                     String chatId = "";
 
                     //gettting id of the chat
@@ -96,12 +101,12 @@ public class ChatsFragment extends Fragment {
 
                     //gettting all users
                     for (DataSnapshot userSnaphshot : dataSnapshot.child("users").getChildren())
-                        for (Chat mChat : chatList){
-                        if (mChat.getChatId().equals(chatId)){
-                            User mUser = new User(userSnaphshot.getKey());
-                            mChat.addUserToArrayList(mUser);
-                            getUserData(mUser);
-                        }
+                        for (Chat mChat : mChatList) {
+                            if (mChat.getChatId().equals(chatId)) {
+                                User mUser = new User(userSnaphshot.getKey());
+                                mChat.addUserToArrayList(mUser);
+                                getUserData(mUser);
+                            }
                         }
                 }
             }
@@ -124,9 +129,9 @@ public class ChatsFragment extends Fragment {
                 if (dataSnapshot.child("notificationKey").getValue() != null)
                     mUser.setNotificationKey(dataSnapshot.child("notificationKey").getValue().toString());
 
-                for (Chat mChat : chatList){
-                    for (User mUserIt : mChat.getUserObjectArrayList()){
-                        if (mUserIt.getPhone().equals(mUser.getPhone())){
+                for (Chat mChat : mChatList) {
+                    for (User mUserIt : mChat.getUserObjectArrayList()) {
+                        if (mUserIt.getPhone().equals(mUser.getPhone())) {
                             mUserIt.setNotificationKey(mUser.getNotificationKey());
                         }
                     }
@@ -136,7 +141,8 @@ public class ChatsFragment extends Fragment {
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) { }
+            public void onCancelled(DatabaseError databaseError) {
+            }
         });
     }
 

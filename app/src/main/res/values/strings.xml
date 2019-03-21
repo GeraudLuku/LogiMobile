@@ -31,6 +31,7 @@
     <string name="what_about_this_video">What About This Video...</string>
     <string name="post">Post</string>
     <string name="send">Send</string>
+    <string name="message">message.....</string>
 
     <string-array name="places_types">
         <item>What Type Of pLace is it?</item>
