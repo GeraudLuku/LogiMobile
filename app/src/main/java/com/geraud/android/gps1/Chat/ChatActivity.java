@@ -1,5 +1,6 @@
 package com.geraud.android.gps1.Chat;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.support.annotation.Nullable;
@@ -12,13 +13,22 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.TextView;
 
+import com.firebase.geofire.GeoFire;
+import com.firebase.geofire.GeoLocation;
+import com.firebase.geofire.LocationCallback;
+import com.geraud.android.gps1.GoogleMap.MapsActivity;
 import com.geraud.android.gps1.Models.Chat;
+import com.geraud.android.gps1.Models.ChatInfo;
 import com.geraud.android.gps1.Models.Message;
 import com.geraud.android.gps1.Models.User;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.RecyclerAdapter.MediaAdapter;
 import com.geraud.android.gps1.RecyclerAdapter.MessageAdapter;
+import com.geraud.android.gps1.Services.SinchService;
+import com.geraud.android.gps1.Sinch.BaseActivity;
+import com.geraud.android.gps1.Sinch.CallScreenActivity;
 import com.geraud.android.gps1.Utils.SendNotification;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
@@ -27,28 +37,32 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
+import com.sinch.android.rtc.calling.Call;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ChatActivity extends AppCompatActivity {
+public class ChatActivity extends BaseActivity {
 
     private RecyclerView mChatRecyclerView, mMediaRecyclerView;
-    private RecyclerView.Adapter mChatAdapter, mMediaAdapter;
+    private RecyclerView.Adapter mMessageAdapter, mMediaAdapter;
     private RecyclerView.LayoutManager mChatLayoutManager, mMediaLayoutManager;
 
-    private String mChatType;
-
     private Chat mChatObject;
+    private ChatInfo mChatInfoObject;
 
-    private DatabaseReference mChatMessagesDb, mChatInfoDb;
+    private DatabaseReference mChatMessagesDb,
+            mChatInfoDb;
 
     private ImageView mMapLocation, mCall, mImage;
+    private TextView mName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,12 +78,37 @@ public class ChatActivity extends AppCompatActivity {
         mMapLocation = toolbar.findViewById(R.id.mapLocation);
         mImage = toolbar.findViewById(R.id.image);
         mCall = toolbar.findViewById(R.id.call);
+        mName = toolbar.findViewById(R.id.name);
         mMessage = findViewById(R.id.message);
 
         mChatObject = (Chat) getIntent().getSerializableExtra("chatObject");
-        mChatType = (mChatObject.getUserObjectArrayList().size() > 1) ? "group" : "single"; //check if it is a group Chat or single Chat
+        mChatInfoObject = (ChatInfo) getIntent().getSerializableExtra("chatInfoObject");
+
+        if (mChatInfoObject.getType().equals("single")){
+            mMapLocation.setVisibility(View.VISIBLE);
+            mCall.setVisibility(View.VISIBLE);
+        }
+
+        //set name and image of chat
+        mName.setText(mChatInfoObject.getName());
+        mImage.setImageURI(Uri.parse(mChatInfoObject.getImage()));
+
+        //call function and map function
+        mCall.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                    call(mChatInfoObject.getName());
+            }
+        });
+        mMapLocation.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showUserOnMap(mChatInfoObject.getName());
+            }
+        });
 
         mChatMessagesDb = FirebaseDatabase.getInstance().getReference().child("CHAT").child(mChatObject.getChatId()).child("messages");
+        mChatInfoDb = FirebaseDatabase.getInstance().getReference().child("CHAT").child(mChatObject.getChatId()).child("info");
 
         Button mSend = findViewById(R.id.send);
         mSend.setOnClickListener(new View.OnClickListener() {
@@ -105,15 +144,15 @@ public class ChatActivity extends AppCompatActivity {
                         text = dataSnapshot.child("text").getValue().toString();
                     if (dataSnapshot.child("creator").getValue() != null)
                         creatorID = dataSnapshot.child("creator").getValue().toString();
-                    if (dataSnapshot.child("media").getChildrenCount() > 0) {
+                    if (dataSnapshot.child("media").getChildrenCount() > 0)
                         for (DataSnapshot mediaSnapshot : dataSnapshot.child("media").getChildren())
                             mediaUrlList.add(mediaSnapshot.getValue().toString());
-                    }
 
-                    Message mMessage = new Message(dataSnapshot.getKey(), text, creatorID, System.currentTimeMillis(), mediaUrlList).withType(mChatType);
+
+                    Message mMessage = new Message(dataSnapshot.getKey(), text, creatorID, System.currentTimeMillis(), mediaUrlList).withType(mChatInfoObject.getType());
                     mMessageList.add(mMessage);
                     mChatLayoutManager.scrollToPosition(mMessageList.size() - 1); //scroll to the last message automatically
-                    mChatAdapter.notifyDataSetChanged();
+                    mMessageAdapter.notifyDataSetChanged();
                 }
             }
 
@@ -159,7 +198,7 @@ public class ChatActivity extends AppCompatActivity {
             for (String mediaUri : mMediaUriList) {
                 String mediaId = newMessageDb.child("media").push().getKey();
                 mediaIdList.add(mediaId);
-                final StorageReference filepath = FirebaseStorage.getInstance().getReference().child("chat").child(mChatObject.getChatId()).child(messageId).child(mediaId);
+                final StorageReference filepath = FirebaseStorage.getInstance().getReference().child("CHAT").child(mChatObject.getChatId()).child(messageId).child(mediaId);
 
                 UploadTask uploadTask = filepath.putFile(Uri.parse(mediaUri));
                 uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
@@ -179,7 +218,8 @@ public class ChatActivity extends AppCompatActivity {
                 });
             }
         } else if (!mMessage.getText().toString().isEmpty())
-            updateDatabaseWithNewMessage(newMessageDb, newMessageMap);
+            newMessageMap.put("media", null);
+        updateDatabaseWithNewMessage(newMessageDb, newMessageMap);
 
 
     }
@@ -199,9 +239,13 @@ public class ChatActivity extends AppCompatActivity {
             message = "Sent Media";
 
         for (User mUser : mChatObject.getUserObjectArrayList())
-            if (!mUser.getPhone().equals(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()))
-                new SendNotification(mUser.getNotificationKey(), mChatObject.getChatId(), message, FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber(), mChatType, "", "");
-
+            if (!mUser.getPhone().equals(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber())) {
+                new SendNotification(message,
+                        "New Message",
+                        mUser.getNotificationKey());
+            }
+        //here also update the last message section in Info database
+        mChatInfoDb.child("lastMessage").setValue(newMessageMap);
     }
 
     private List<Message> mMessageList;
@@ -213,8 +257,8 @@ public class ChatActivity extends AppCompatActivity {
         mChatRecyclerView.setHasFixedSize(false);
         mChatLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false);
         mChatRecyclerView.setLayoutManager(mChatLayoutManager);
-        mChatAdapter = new MessageAdapter(mMessageList, this);
-        mChatRecyclerView.setAdapter(mChatAdapter);
+        mMessageAdapter = new MessageAdapter(mMessageList, this);
+        mChatRecyclerView.setAdapter(mMessageAdapter);
     }
 
     ArrayList<String> mMediaUriList;
@@ -239,6 +283,72 @@ public class ChatActivity extends AppCompatActivity {
         intent.setAction(intent.ACTION_GET_CONTENT);
         startActivityForResult(Intent.createChooser(intent, "Select Picture(s)"), PICK_IMAGE_INTENT);
     }
+
+    private void call(String name) {
+        DatabaseReference mUserDB = FirebaseDatabase.getInstance().getReference().child("USER");
+        Query query = mUserDB.orderByChild("name").equalTo(name);
+        query.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists())
+                    for (DataSnapshot dc : dataSnapshot.getChildren()){
+                        User user = dc.getValue(User.class);
+
+                        Call call = getSinchServiceInterface().callUser(user.getPhone());
+                        String callId = call.getCallId();
+
+                        Intent callScreen = new Intent(getApplicationContext(), CallScreenActivity.class);
+                        callScreen.putExtra(SinchService.CALL_ID, callId);
+                        callScreen.putExtra(SinchService.CALL_NAME, user.getName());
+                        callScreen.putExtra(SinchService.CALL_IMAGE, user.getImage_uri());
+                        startActivity(callScreen);
+                    }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    private void showUserOnMap(String name) {
+
+        DatabaseReference mUserDB = FirebaseDatabase.getInstance().getReference().child("USER");
+        Query query = mUserDB.orderByChild("name").equalTo(name);
+        query.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists())
+                    for (DataSnapshot dc : dataSnapshot.getChildren()){
+                        GeoFire geoFire = new GeoFire(FirebaseDatabase.getInstance().getReference("LOCATION"));
+                        geoFire.getLocation(dc.getKey(), new LocationCallback() {
+                            @Override
+                            public void onLocationResult(String key, GeoLocation location) {
+                                if (location != null){
+                                    Intent intent = new Intent(getApplicationContext(), MapsActivity.class);
+                                    intent.putExtra("latitude", location.latitude);
+                                    intent.putExtra("longitude", location.longitude);
+                                    setResult(Activity.RESULT_OK, intent);
+                                    startActivity(intent);
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(DatabaseError databaseError) {
+
+                            }
+                        });
+                    }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+    }
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {

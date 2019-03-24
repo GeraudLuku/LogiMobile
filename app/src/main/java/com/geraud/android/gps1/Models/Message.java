@@ -41,8 +41,4 @@ public class Message extends ChatType {
         return mediaUrlist;
     }
 
-//    @Override
-//    public <T extends ChatType> T withType(@NonNull String type) {
-//        return super.withType(type);
-//    }
 }

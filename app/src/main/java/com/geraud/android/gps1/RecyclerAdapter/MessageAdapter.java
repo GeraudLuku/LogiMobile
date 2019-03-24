@@ -105,6 +105,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
             public void onClick(View v) {
                 //show media files with FRESCO
                 new ImageViewer.Builder(mContext, mMessageList.get(holder.getAdapterPosition()).getMediaUrlist())
+                        .allowSwipeToDismiss(true)
                         .setStartPosition(0)
                         .show();
             }

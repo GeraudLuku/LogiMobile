@@ -11,12 +11,13 @@ import android.os.Bundle;
 import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
+import android.support.v7.widget.Toolbar;
+import android.view.View;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
-import com.geraud.android.gps1.Dailogs.Add_GroupChat;
+import com.geraud.android.gps1.Dailogs.AddGroupChat;
+import com.geraud.android.gps1.Models.Message;
 import com.geraud.android.gps1.Models.User;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.RecyclerAdapter.UserListAdapter;
@@ -33,26 +34,37 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class FindUserActivity extends AppCompatActivity implements Add_GroupChat.AddGroupChatListener {
+public class FindUserActivity extends AppCompatActivity implements AddGroupChat.AddGroupChatListener {
     private static final int REQUEST_CODE = 1;
 
     private RecyclerView mUserListRecyclerView;
     private RecyclerView.Adapter mUserListAdapter;
     private RecyclerView.LayoutManager mUserListLayoutManager;
 
-    DatabaseReference chatInfoDb;
-    DatabaseReference userDb;
+    private DatabaseReference mChatInfoDB;
+    private DatabaseReference mUserDB;
 
-    HashMap newChatMap = new HashMap();
-
-    String key;
-
+    private HashMap mNewChatMap = new HashMap();
     private List<User> mUserList;
+
+    private String key;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_find_user);
+
+        // Find the toolbar view inside the activity layout
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        ImageButton createChatBtn = toolbar.findViewById(R.id.createChat);
+        createChatBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                createChat();
+            }
+        });
 
         mUserList = new ArrayList<>();
         initializeRecyclerView();
@@ -78,36 +90,42 @@ public class FindUserActivity extends AppCompatActivity implements Add_GroupChat
     }
 
     private void createChat() {
+        key = FirebaseDatabase.getInstance().getReference().child("CHAT").push().getKey();
 
-        key = FirebaseDatabase.getInstance().getReference().child("chat").push().getKey();
-        userDb = FirebaseDatabase.getInstance().getReference().child("user");
-        chatInfoDb = FirebaseDatabase.getInstance().getReference().child("chat").child(key).child("info");
+        mUserDB = FirebaseDatabase.getInstance().getReference().child("USER");
+        mChatInfoDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(key).child("info");
 
-        newChatMap.put("id", key);
-        newChatMap.put("users/" + FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber(), true);
+        Message message = new Message(null, "Open to start chatting", null, System.currentTimeMillis(), null);
 
-        Boolean validChat = false;
+        mNewChatMap.put("id", key);
+        mNewChatMap.put("lastMessage/", message);
+        mNewChatMap.put("users/" + FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber(), true);
+
+        boolean validChat = false;
         int count = 0; //number of users selected
         for (User mUser : mUserList) {
             if (mUser.getSelected()) {
                 validChat = true;
+                mNewChatMap.put("users/" + mUser.getPhone(), true);
+                mUserDB.child(mUser.getPhone()).child("chat").child(key).setValue(true); //chat id set in all the users documents
                 count++;
-                newChatMap.put("users/" + mUser.getPhone(), true);
-                userDb.child(mUser.getPhone()).child("chat").child(key).setValue(true);
             }
         }
 
         if (validChat) {
-            if (count > 1) {
-                //means its a group chat and we should promt the user to provide a name for it and also an image
+            if (count > 1) { //means its a group chat and we should promt the user to provide a name for it and also an image
                 CreateGroupChat();
             } else {
-                chatInfoDb.updateChildren(newChatMap);
-                userDb.child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("chat").child(key).setValue(true);
+                mNewChatMap.put("name", null);
+                mNewChatMap.put("type", "single");
+                mNewChatMap.put("image", null);
+
+                mChatInfoDB.updateChildren(mNewChatMap);
+                mUserDB.child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("chat").child(key).setValue(true); //chat id set in my Document
                 finish();
             }
         } else
-            Toast.makeText(this, "Not A valid chat", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Not A valid chat", Toast.LENGTH_SHORT).show();
 
     }
 
@@ -133,42 +151,21 @@ public class FindUserActivity extends AppCompatActivity implements Add_GroupChat
         });
     }
 
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater menuInflater = getMenuInflater();
-        menuInflater.inflate(R.menu.find_user_activity, menu);
-        return super.onCreateOptionsMenu(menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-
-        switch (item.getItemId()) {
-            case R.id.createChat:
-                createChat();
-                break;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
     //open add place dailog
     public void CreateGroupChat() {
-
-        Add_GroupChat add_groupChat = new Add_GroupChat();
-        add_groupChat.show(getSupportFragmentManager(), "Add Group Chat");
-        //part 2 right below!!!!
+        AddGroupChat groupChat = new AddGroupChat();
+        groupChat.show(getSupportFragmentManager(), "Add Group Chat");
     }
 
     @Override
     public void applyGroupInfo(String name, Uri image_uri) {
         //create a new field for group name and group icon/image
-        newChatMap.put("name", name);
-        newChatMap.put("image", image_uri);
+        mNewChatMap.put("type", "group");
+        mNewChatMap.put("name", name);
+        mNewChatMap.put("image", image_uri);
 
-        chatInfoDb.updateChildren(newChatMap);
-        userDb.child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("chat").child(key).setValue(true);
-
+        mChatInfoDB.updateChildren(mNewChatMap);
+        mUserDB.child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("chat").child(key).setValue(true);
         finish();
     }
 

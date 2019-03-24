@@ -37,7 +37,7 @@
                 android:id="@+id/name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
+                android:layout_marginStart="30dp"
                 android:textColor="@android:color/white"
                 tools:text="Luku Geraud" />
 
@@ -46,14 +46,16 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="100dp"
-                android:src="@drawable/direction" />
+                android:src="@drawable/direction"
+                android:visibility="invisible" />
 
             <ImageView
                 android:id="@+id/call"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="20dp"
-                android:src="@drawable/call_chat" />
+                android:src="@drawable/call_chat"
+                android:visibility="invisible" />
 
         </android.support.v7.widget.Toolbar>
 

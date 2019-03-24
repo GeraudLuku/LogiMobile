@@ -32,6 +32,7 @@
     <string name="post">Post</string>
     <string name="send">Send</string>
     <string name="message">message.....</string>
+    <string name="what_about_this_group">What About This Group?</string>
 
     <string-array name="places_types">
         <item>What Type Of pLace is it?</item>

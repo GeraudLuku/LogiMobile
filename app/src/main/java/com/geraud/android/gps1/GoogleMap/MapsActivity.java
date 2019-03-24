@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -33,8 +34,6 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.CompoundButton;
@@ -95,6 +94,8 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polygon;
+import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -117,7 +118,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
-import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
@@ -505,12 +505,13 @@ public class MapsActivity extends BaseActivity implements
             runOnUiThread(new Runnable() {
                 Calendar calendar = Calendar.getInstance();
                 int timeOfTheDay = calendar.get(Calendar.HOUR_OF_DAY);
+
                 @Override
                 public void run() {
 
                     mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(getApplicationContext(),
                             (timeOfTheDay >= 6 && timeOfTheDay < 17) ? R.raw.day_map : R.raw.night_map
-                            ));
+                    ));
                 }
             });
 
@@ -890,15 +891,32 @@ public class MapsActivity extends BaseActivity implements
     }
 
     //goto method on the map
+    public PolygonOptions mSearchPolygonOptions;
+    private Polygon mSearchPolygon;
+
     private void goTO(LatLng latLng) {
 
         if (latLng != null) {
+
+            if (mSearchPolygon != null) {
+                mSearchPolygon.remove();
+                mSearchPolygon = null;
+            }
+
             //Moving the camera
             mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
             //Animating the camera
             mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
             //update value on seekbar
             mVerticalSeekBar.setProgress(15);
+
+            mSearchPolygonOptions.add(latLng);
+            mSearchPolygonOptions.strokeColor(getResources().getColor(R.color.light_sky_blue));
+            mSearchPolygonOptions.strokeWidth(5);
+            mSearchPolygonOptions.fillColor(getResources().getColor(R.color.yellow_green));
+
+            mSearchPolygon = mMap.addPolygon(mSearchPolygonOptions);
+
         }
     }
 
@@ -1345,10 +1363,10 @@ public class MapsActivity extends BaseActivity implements
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if(resultCode == Activity.RESULT_OK){
+        if (resultCode == Activity.RESULT_OK) {
             double latitude = data.getDoubleExtra("latitude", 0);
             double longitude = data.getDoubleExtra("longitude", 0);
-            goTO(new LatLng(latitude,longitude));
+            goTO(new LatLng(latitude, longitude));
         }
 
         if (requestCode == 1) {

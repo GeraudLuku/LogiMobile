@@ -29,11 +29,12 @@ public class SplashActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         super.onCreate(savedInstanceState);
+
         //initialising variables
         FirebaseApp.initializeApp(this);
         Fresco.initialize(this);
+
         OneSignal.startInit(this).init();
         OneSignal.setSubscription(true);
         OneSignal.setInFocusDisplaying(OneSignal.OSInFocusDisplayOption.Notification);

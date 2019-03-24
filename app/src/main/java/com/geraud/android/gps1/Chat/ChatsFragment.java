@@ -11,6 +11,8 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.geraud.android.gps1.Models.Chat;
+import com.geraud.android.gps1.Models.ChatInfo;
+import com.geraud.android.gps1.Models.Message;
 import com.geraud.android.gps1.Models.User;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.RecyclerAdapter.ChatListAdapter;
@@ -32,6 +34,7 @@ public class ChatsFragment extends Fragment {
     private RecyclerView.LayoutManager mChatListLayoutManager;
 
     private List<Chat> mChatList;
+    private List<ChatInfo> mChatInfo;
 
     public ChatsFragment() {
         // Required empty public constructor
@@ -45,13 +48,15 @@ public class ChatsFragment extends Fragment {
 
         //initialising recycler view
         mChatList = new ArrayList<>();
+        mChatInfo = new ArrayList<>();
+
         mChatRecyclerView = view.findViewById(R.id.chatList);
         mChatRecyclerView.setNestedScrollingEnabled(false);
         mChatRecyclerView.setHasFixedSize(false);
         mChatRecyclerView.addItemDecoration(new DividerItemDecoration(mChatRecyclerView.getContext(), DividerItemDecoration.VERTICAL)); // list divider
         mChatListLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false);
         mChatRecyclerView.setLayoutManager(mChatListLayoutManager);
-        mChatListAdapter = new ChatListAdapter(mChatList, getContext());
+        mChatListAdapter = new ChatListAdapter(mChatList, mChatInfo, getContext());
         mChatRecyclerView.setAdapter(mChatListAdapter);
 
         getUserChatList();
@@ -61,7 +66,7 @@ public class ChatsFragment extends Fragment {
 
     private void getUserChatList() {
         DatabaseReference mUserChatDB = FirebaseDatabase.getInstance().getReference().child("USER").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("chat");
-        mUserChatDB.addValueEventListener(new ValueEventListener() {
+        mUserChatDB.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
@@ -88,24 +93,25 @@ public class ChatsFragment extends Fragment {
 
     //thi is where you will get the info of all the chats including the destinator , last message and timestamp
     private void getChatData(String chatId) {
-        DatabaseReference mChatDB = FirebaseDatabase.getInstance().getReference().child("chat").child(chatId).child("info");
-        mChatDB.addValueEventListener(new ValueEventListener() {
+        DatabaseReference mChatDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(chatId).child("info");
+        mChatDB.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
                     String chatId = "";
 
+
                     //gettting id of the chat
                     if (dataSnapshot.child("id").getValue() != null)
                         chatId = dataSnapshot.child("id").getValue().toString();
 
-                    //gettting all users
+                    //getting all users
                     for (DataSnapshot userSnaphshot : dataSnapshot.child("users").getChildren())
                         for (Chat mChat : mChatList) {
                             if (mChat.getChatId().equals(chatId)) {
                                 User mUser = new User(userSnaphshot.getKey());
                                 mChat.addUserToArrayList(mUser);
-                                getUserData(mUser);
+                                getUserData(mUser, chatId);
                             }
                         }
                 }
@@ -116,15 +122,15 @@ public class ChatsFragment extends Fragment {
 
             }
         });
+
     }
 
-    private void getUserData(User mUser) {
-        DatabaseReference mUserDb = FirebaseDatabase.getInstance().getReference().child("user").child(mUser.getPhone());
-        mUserDb.addValueEventListener(new ValueEventListener() {
+    private void getUserData(User mUser, final String chatId) {
+        DatabaseReference mUserDb = FirebaseDatabase.getInstance().getReference().child("USER").child(mUser.getPhone());
+        mUserDb.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 User mUser = new User(dataSnapshot.getKey());
-
                 //getting notification key
                 if (dataSnapshot.child("notificationKey").getValue() != null)
                     mUser.setNotificationKey(dataSnapshot.child("notificationKey").getValue().toString());
@@ -136,8 +142,8 @@ public class ChatsFragment extends Fragment {
                         }
                     }
                 }
-
-                mChatListAdapter.notifyDataSetChanged();
+                //to put in the chatInfo object
+                getChatMetaData(chatId);
             }
 
             @Override
@@ -146,4 +152,25 @@ public class ChatsFragment extends Fragment {
         });
     }
 
+    private void getChatMetaData(String chatId) {
+        DatabaseReference mChatInfoDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(chatId).child("info");
+        mChatInfoDB.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    for (DataSnapshot dc : dataSnapshot.getChildren()) {
+                        ChatInfo chatInfo = dc.getValue(ChatInfo.class);
+                        mChatInfo.add(chatInfo);
+                    }
+                }
+                mChatListAdapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+    }
 }
