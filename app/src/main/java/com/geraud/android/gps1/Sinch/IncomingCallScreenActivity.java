@@ -2,12 +2,12 @@ package com.geraud.android.gps1.Sinch;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.geraud.android.gps1.R;
@@ -22,7 +22,6 @@ import java.util.List;
 
 public class IncomingCallScreenActivity extends BaseActivity {
 
-    static final String TAG = IncomingCallScreenActivity.class.getSimpleName();
     private String mCallId;
     private String mCallName;
     private String mCallImage;
@@ -47,7 +46,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_incoming_call_screen);
 
-        mAudioPlayer = new AudioPlayer(this);
+        mAudioPlayer = new AudioPlayer(getApplicationContext());
         mAudioPlayer.playRingtone();
         mCallId = getIntent().getStringExtra(SinchService.CALL_ID);
         mCallName = getIntent().getStringExtra(SinchService.CALL_NAME);
@@ -70,7 +69,7 @@ public class IncomingCallScreenActivity extends BaseActivity {
             TextView callName = findViewById(R.id.remoteUserName);
             callName.setText(mCallName);
         } else {
-            Log.e(TAG, "Started with invalid callId, aborting");
+            Toast.makeText(getApplicationContext(), "Started with invalid callId, aborting", Toast.LENGTH_SHORT).show();
             finish();
         }
     }
@@ -105,19 +104,19 @@ public class IncomingCallScreenActivity extends BaseActivity {
         @Override
         public void onCallEnded(Call call) {
             CallEndCause cause = call.getDetails().getEndCause();
-            Log.d(TAG, "Call ended, cause: " + cause.toString());
+            Toast.makeText(getApplicationContext(), "Call ended, cause: " + cause.toString(), Toast.LENGTH_SHORT).show();
             mAudioPlayer.stopRingtone();
             finish();
         }
 
         @Override
         public void onCallEstablished(Call call) {
-            Log.d(TAG, "Call established");
+            Toast.makeText(getApplicationContext(), "Call Established", Toast.LENGTH_SHORT).show();
         }
 
         @Override
         public void onCallProgressing(Call call) {
-            Log.d(TAG, "Call progressing");
+            Toast.makeText(getApplicationContext(), "Call progressing", Toast.LENGTH_SHORT).show();
         }
 
         @Override

@@ -17,6 +17,7 @@ import android.widget.TextView;
 import android.widget.VideoView;
 
 import com.bumptech.glide.Glide;
+import com.danikula.videocache.HttpProxyCacheServer;
 import com.geraud.android.gps1.Models.Stories;
 import com.geraud.android.gps1.R;
 
@@ -31,6 +32,8 @@ public class StoriesSliderAdapter extends PagerAdapter {
     private VideoView mVideoView;
     private ImageView mImageView;
     private TextView mImageTextView, mVideoTextView;
+
+    private HttpProxyCacheServer mProxy;
 
     private View mView;
     private int mPosition;
@@ -71,7 +74,16 @@ public class StoriesSliderAdapter extends PagerAdapter {
         mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
         mAudioBecomingNoisy = new AudioBecomingNoisy();
         mNoisyIntentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+
+        mProxy = getProxy();
     }
+
+    private HttpProxyCacheServer getProxy() {
+        return new HttpProxyCacheServer.Builder(mContext)
+                .maxCacheSize(5120 * 5120 * 5120)       // 5 Gb for cache 1GB = 1024
+                .build();
+    }
+
 
     @Override
     public int getCount() {
@@ -124,7 +136,8 @@ public class StoriesSliderAdapter extends PagerAdapter {
             View line = mView.findViewById(R.id.view);
 
             //load video on videoView
-            mVideoView.setVideoURI(Uri.parse(mStoriesList.get(position).getMedia()));
+            String proxyUrl = mProxy.getProxyUrl(mStoriesList.get(position).getMedia());
+            mVideoView.setVideoPath(proxyUrl);
             mVideoView.start();
 
             //load description text
@@ -179,5 +192,6 @@ public class StoriesSliderAdapter extends PagerAdapter {
     public void destroyItem(ViewGroup container, int position, Object object) {
         container.removeView((View) object);
     }
+
 
 }

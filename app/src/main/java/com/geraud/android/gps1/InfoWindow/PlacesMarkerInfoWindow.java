@@ -12,6 +12,10 @@ import com.geraud.android.gps1.R;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.Marker;
 import com.google.gson.Gson;
+import com.stfalcon.frescoimageviewer.ImageViewer;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class PlacesMarkerInfoWindow implements GoogleMap.InfoWindowAdapter {
@@ -32,6 +36,9 @@ public class PlacesMarkerInfoWindow implements GoogleMap.InfoWindowAdapter {
         Gson gson = new Gson();
         Place placeInfo = gson.fromJson(marker.getSnippet(), Place.class);
 
+        final List<String> mImages = new ArrayList<>();
+        mImages.add(placeInfo.getImage_uri());
+
 
         //reference the title and snippetof the custom info Window
         TextView infotitle = v.findViewById(R.id.infoWindow_places_name);
@@ -41,6 +48,17 @@ public class PlacesMarkerInfoWindow implements GoogleMap.InfoWindowAdapter {
         infotitle.setText(placeInfo.getName());
         infosnippet.setText(placeInfo.getDescription());
         Glide.with(mContext).load(placeInfo.getImage_uri()).into(infoImage);
+
+        //on image view click show full screen on fresco
+        infoImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new ImageViewer.Builder(mContext, mImages)
+                        .setStartPosition(0)
+                        .show();
+            }
+        });
+
 
 
     }

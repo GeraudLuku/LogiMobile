@@ -156,14 +156,14 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                 mImage.close();
 
                 Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mImageFileName))); // uri of the file can use it to send t other activity
+                mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mImageFileName))); // uri of the file can use it to send to other activity
                 sendBroadcast(mediaStoreUpdateIntent);
 
                 //if this activity was opened from another one open find user to send it to
                 //intent to the image full screen activity
                 Intent fullScreenIntent = new Intent(getApplicationContext(), FullScreenImageActivity.class);
                 if (getIntent().getExtras() != null)
-                    fullScreenIntent.putExtra("chat","chat");
+                    fullScreenIntent.putExtra("chat","chatsActivity");
                 fullScreenIntent.setData(Uri.fromFile(new File(mImageFileName)));
                 startActivity(fullScreenIntent);
 
@@ -372,7 +372,7 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
 
                                                                         Intent fullScreenIntent = new Intent(getApplicationContext(), VideoPlayActivity.class);
                                                                         if (getIntent().getExtras() != null)
-                                                                            fullScreenIntent.putExtra("chat","chat");
+                                                                            fullScreenIntent.putExtra("chat","chatsActivity");
                                                                         fullScreenIntent.setData(Uri.fromFile(new File(mVideoFileName)));
                                                                         startActivity(fullScreenIntent);
 

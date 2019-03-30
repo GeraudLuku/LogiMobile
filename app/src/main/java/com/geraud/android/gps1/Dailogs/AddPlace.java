@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatDialogFragment;
 import android.text.TextUtils;
@@ -21,6 +22,8 @@ import com.geraud.android.gps1.R;
 import com.theartofdev.edmodo.cropper.CropImage;
 import com.theartofdev.edmodo.cropper.CropImageView;
 
+import java.util.Objects;
+
 import es.dmoral.toasty.Toasty;
 
 import static android.app.Activity.RESULT_OK;
@@ -30,19 +33,22 @@ import static android.app.Activity.RESULT_OK;
  */
 
 public class AddPlace extends AppCompatDialogFragment {
-    private EditText mNameEditText, mDescriptionEditText;
+
+    private EditText mNameEditText,
+            mDescriptionEditText;
     private ImageView mImageView;
-    private Spinner mSpinner;
     private String mPlaceType;
     private Uri mImageUri;
+
     private AddPlaceListener mAddPlaceListener;
 
+    @NonNull
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        AlertDialog.Builder builder = new AlertDialog.Builder(Objects.requireNonNull(getContext()));
 
-        LayoutInflater inflater = getActivity().getLayoutInflater();
+        LayoutInflater inflater = Objects.requireNonNull(getActivity(), "AddPlace Get Activity Cant Be Null").getLayoutInflater();
         View view = inflater.inflate(R.layout.add_place, null);
 
         //initialise the views
@@ -50,7 +56,7 @@ public class AddPlace extends AppCompatDialogFragment {
         mDescriptionEditText = view.findViewById(R.id.place_description);
         mImageView = view.findViewById(R.id.place_image);
 
-        mSpinner = view.findViewById(R.id.place_spinner);
+        Spinner mSpinner = view.findViewById(R.id.place_spinner);
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getActivity(), R.array.places_types, android.R.layout.simple_spinner_dropdown_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mSpinner.setAdapter(adapter);
@@ -59,7 +65,6 @@ public class AddPlace extends AppCompatDialogFragment {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 if (position == 0) //do nothing since its the hint
                     view.setClickable(false);
-
                 mPlaceType = parent.getItemAtPosition(position).toString();
             }
 
@@ -77,7 +82,7 @@ public class AddPlace extends AppCompatDialogFragment {
                         .setGuidelines(CropImageView.Guidelines.ON)
                         .setMinCropResultSize(512, 512)
                         .setAspectRatio(1, 1)
-                        .start(getActivity());
+                        .start(Objects.requireNonNull(getActivity(), "AddPlace Get Activity Cant Be Null"));
             }
         });
 
@@ -98,7 +103,7 @@ public class AddPlace extends AppCompatDialogFragment {
                         if (!TextUtils.isEmpty(placeName) && !TextUtils.isEmpty(placeDesc) && mImageUri != null && !mPlaceType.isEmpty()) {
                             mAddPlaceListener.AddPlaceOnMap(placeName, placeDesc, mImageUri, mPlaceType);
                         } else
-                            Toasty.error(getActivity(), "Enter An Image, Name,Description And Type", 2000, true).show();
+                            Toasty.error(Objects.requireNonNull(getActivity(), "AddPlace Get Activity Cant Be Null"), "Enter An Image, Name,Description And Type", 2000, true).show();
                     }
                 });
 
@@ -131,7 +136,7 @@ public class AddPlace extends AppCompatDialogFragment {
                 mImageView.setImageURI(mImageUri);
 
             } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
-                Toasty.error(getActivity(), result.getError().toString(), 2000, true).show();
+                Toasty.error(Objects.requireNonNull(getActivity(), "AddPlace Get Activity Cant Be Null"), result.getError().toString(), 2000, true).show();
             }
         }
     }

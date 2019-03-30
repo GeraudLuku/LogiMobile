@@ -23,6 +23,7 @@ import com.geraud.android.gps1.Models.Stories;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.Utils.RandomStringGenerator;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
@@ -33,7 +34,6 @@ import com.google.firebase.storage.UploadTask;
 
 public class VideoPlayActivity extends AppCompatActivity implements
         SurfaceHolder.Callback,
-        MediaPlayer.OnCompletionListener,
         AudioManager.OnAudioFocusChangeListener {
 
     private MediaPlayer mMediaPlayer;
@@ -51,10 +51,10 @@ public class VideoPlayActivity extends AppCompatActivity implements
 
 
     private boolean location = true;
-    private double latitude = 0;
-    private double longitude = 0;
+    private double mLatitude = 0;
+    private double mLongitude = 0;
+
     private String mDescription;
-    private static final String TYPE = "video";
 
     private class AudioBecomingNoisy extends BroadcastReceiver {
 
@@ -86,7 +86,7 @@ public class VideoPlayActivity extends AppCompatActivity implements
         });
 
         mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORIES").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
-        mStorageReference = FirebaseStorage.getInstance().getReference();
+        mStorageReference = FirebaseStorage.getInstance().getReference().child("STORIES").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
 
         mSurfaceView = findViewById(R.id.videoSurfaceView);
         mSurfaceView.setOnTouchListener(new View.OnTouchListener() {
@@ -156,10 +156,18 @@ public class VideoPlayActivity extends AppCompatActivity implements
         unregisterReceiver(mAudioBecomingNoisy);
     }
 
+    private MediaPlayer.OnCompletionListener mMediaPlayerOnCompleteListener = new MediaPlayer.OnCompletionListener() {
+        @Override
+        public void onCompletion(MediaPlayer mp) {
+            // video was played till the end
+            mediaPause();
+        }
+    };
+
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         mMediaPlayer = MediaPlayer.create(this, mVideoUri, holder);
-        mMediaPlayer.setOnCompletionListener(this);
+        mMediaPlayer.setOnCompletionListener(mMediaPlayerOnCompleteListener);
         mediaPlay();
     }
 
@@ -171,10 +179,6 @@ public class VideoPlayActivity extends AppCompatActivity implements
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
 
-    }
-
-    @Override
-    public void onCompletion(MediaPlayer mp) {
     }
 
     @Override
@@ -210,35 +214,31 @@ public class VideoPlayActivity extends AppCompatActivity implements
 
     private void postStatus() {
 
-        final long currentTime = System.currentTimeMillis();
-
         mDescription = mDescriptionEditText.getText().toString() == null ? " " : mDescriptionEditText.getText().toString();
 
-        if (latitude == 0 && longitude == 0) {
+        if (mLatitude == 0 && mLongitude == 0)
             location = false;
-        }
 
-        final StorageReference filepath = mStorageReference.child("STORIES").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child(RandomStringGenerator.randomString() + ".jpg");
-        filepath.putFile(mVideoUri).addOnCompleteListener(new OnCompleteListener<UploadTask.TaskSnapshot>() {
+        StorageReference filepath = mStorageReference.child(RandomStringGenerator.randomString() + ".jpg");
+        UploadTask uploadTask = filepath.putFile(mVideoUri);
+        uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
             @Override
-            public void onComplete(@NonNull Task<UploadTask.TaskSnapshot> task) {
-                if (task.isSuccessful()) {
-                    final String downloadURI = task.getResult().getDownloadUrl().toString();
-                    Stories stories = new Stories(location, downloadURI, mDescription, currentTime, latitude, longitude, TYPE, FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
-                    mDatabaseReference.push().setValue(stories).addOnCompleteListener(new OnCompleteListener<Void>() {
-                        @Override
-                        public void onComplete(@NonNull Task<Void> task) {
-                            if (task.isSuccessful()) {
-                                Toast.makeText(getApplicationContext(), "Succesfully created story", Toast.LENGTH_SHORT).show();
-                                finish();
-                            } else {
-                                Toast.makeText(getApplicationContext(), "Couldnt create story", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    });
-                } else {
-                    Toast.makeText(getApplicationContext(), "Couldnt upload status", Toast.LENGTH_SHORT).show();
-                }
+            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+
+                Stories stories = new Stories(location, taskSnapshot.getDownloadUrl().toString(),
+                        mDescription, System.currentTimeMillis(), mLatitude, mLongitude, "video",
+                        FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
+
+                mDatabaseReference.push().setValue(stories).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            Toast.makeText(getApplicationContext(), "Successfully created story", Toast.LENGTH_SHORT).show();
+                            finish();
+                        } else
+                            Toast.makeText(getApplicationContext(), "Couldn't create story", Toast.LENGTH_SHORT).show();
+                    }
+                });
             }
         });
     }

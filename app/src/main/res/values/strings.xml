@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">GPS</string>
-    <string name="title_activity_main__app">Main_App</string>
+    <string name="app_name">Logi</string>
+    <string name="title_activity_main__app">Logi Explorer</string>
 
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
@@ -26,13 +26,27 @@
     <string name="call">Call</string>
     <string name="currently_tracking">Currently Tracking</string>
     <string name="_8h_ago">8h Ago</string>
-    <string name="no_activites">No Activites</string>
+    <string name="no_activites">No Activities</string>
     <string name="what_about_this_pic">What About This Pic..</string>
-    <string name="what_about_this_video">What About This Video...</string>
+    <string name="what_about_this_video">What About This Video…</string>
     <string name="post">Post</string>
     <string name="send">Send</string>
     <string name="message">message.....</string>
     <string name="what_about_this_group">What About This Group?</string>
+    <string name="chats">Chats</string>
+    <string name="hide_location">Hide Location</string>
+    <string name="share_location">Share Location</string>
+    <string name="hide_geofences">Hide Geofences</string>
+    <string name="show_geofences">Show Geofences</string>
+    <string name="online">ONLINE</string>
+    <string name="offline">OFFLINE</string>
+    <string name="away">AWAY</string>
+    <string name="image_of_the_user">image of the user</string>
+    <string name="image_preview_of_place">image preview of place</string>
+    <string name="options_icon">options icon</string>
+    <string name="chat">Chat</string>
+    <string name="go_to">GO-TO</string>
+    <string name="go_to">GO-TO</string>
 
     <string-array name="places_types">
         <item>What Type Of pLace is it?</item>

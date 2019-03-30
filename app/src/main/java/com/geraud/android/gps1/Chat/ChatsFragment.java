@@ -100,8 +100,7 @@ public class ChatsFragment extends Fragment {
                 if (dataSnapshot.exists()) {
                     String chatId = "";
 
-
-                    //gettting id of the chat
+                    //getting id of the chat
                     if (dataSnapshot.child("id").getValue() != null)
                         chatId = dataSnapshot.child("id").getValue().toString();
 
@@ -131,6 +130,7 @@ public class ChatsFragment extends Fragment {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 User mUser = new User(dataSnapshot.getKey());
+
                 //getting notification key
                 if (dataSnapshot.child("notificationKey").getValue() != null)
                     mUser.setNotificationKey(dataSnapshot.child("notificationKey").getValue().toString());
@@ -162,8 +162,8 @@ public class ChatsFragment extends Fragment {
                         ChatInfo chatInfo = dc.getValue(ChatInfo.class);
                         mChatInfo.add(chatInfo);
                     }
+                    mChatListAdapter.notifyDataSetChanged();
                 }
-                mChatListAdapter.notifyDataSetChanged();
             }
 
             @Override

@@ -3,7 +3,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:background="@drawable/call_activity_background_gradient"
     xmlns:tools="http://schemas.android.com/tools">
 
     <de.hdodenhof.circleimageview.CircleImageView
@@ -14,7 +13,7 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="65dp"
         android:padding="5dp"
-        tools:src="@color/alice_blue" />
+        tools:src="@drawable/lou_pie" />
 
     <TextView
         android:id="@+id/remoteUserName"
@@ -22,12 +21,14 @@
         android:layout_height="wrap_content"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
         android:layout_marginStart="148dp"
         android:layout_marginTop="389dp"
+        android:layout_marginEnd="156dp"
         android:padding="5dp"
+        android:textColor="@color/black"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:textColor="@color/black"
         tools:text="Mr.Sucess" />
 
     <android.support.design.widget.FloatingActionButton
@@ -52,7 +53,7 @@
         android:layout_marginEnd="51dp"
         android:layout_marginBottom="90dp"
         android:src="@drawable/call_btn"
-        app:backgroundTint="@color/colorAccent"
+        app:backgroundTint="@color/dark_gray"
         app:borderWidth="0dp"
         app:elevation="20dp" />
 

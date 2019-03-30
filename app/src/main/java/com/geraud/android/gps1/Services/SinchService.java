@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.geraud.android.gps1.Models.User;
 import com.geraud.android.gps1.Sinch.IncomingCallScreenActivity;
@@ -200,19 +201,21 @@ public class SinchService extends Service {
                         for (DataSnapshot dc : dataSnapshot.getChildren()) {
                             //if the info of the user was successfully found in the database you can now proceed normally
                             User remoteUser = dc.getValue(User.class);
-                            Intent intent = new Intent(SinchService.this, IncomingCallScreenActivity.class);
-                            intent.putExtra(CALL_ID, call.getCallId());
-                            intent.putExtra(CALL_NAME, remoteUser.getName());
-                            intent.putExtra(CALL_IMAGE, remoteUser.getImage_uri());
-                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                            SinchService.this.startActivity(intent);
+                            if (remoteUser != null) {
+                                Intent intent = new Intent(SinchService.this, IncomingCallScreenActivity.class);
+                                intent.putExtra(CALL_ID, call.getCallId());
+                                intent.putExtra(CALL_NAME, remoteUser.getName());
+                                intent.putExtra(CALL_IMAGE, remoteUser.getImage_uri());
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                SinchService.this.startActivity(intent);
+                            }
                         }
                     }
                 }
 
                 @Override
                 public void onCancelled(DatabaseError databaseError) {
-
+                    Toast.makeText(getApplicationContext(), "Incoming Call ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
                 }
             });
 

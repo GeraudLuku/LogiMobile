@@ -4,11 +4,11 @@
     <item
         android:id="@+id/chatMenuBtn"
         android:icon="@drawable/chat_btn"
-        android:title="Chat" />
+        android:title="@string/chat" />
     <item
         android:id="@+id/gotoMenuBtn"
         android:icon="@drawable/direction_btn"
-        android:title="GO-TO" />
+        android:title="@string/go_to" />
     <item
         android:id="@+id/callMenuBtn"
         android:icon="@drawable/call_btn"

@@ -12,6 +12,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.geraud.android.gps1.Models.Message;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.Utils.TimeAgo;
@@ -85,7 +86,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
                     for (DataSnapshot childsnapshot : dataSnapshot.getChildren())
                         if (childsnapshot.child("name").getValue() != null && childsnapshot.child("image_uri").getValue() != null) {
                             holder.mSenderName.setText(childsnapshot.child("name").getValue().toString());
-                            holder.mImageView.setImageURI(Uri.parse(childsnapshot.child("image_uri").getValue().toString()));
+                            Glide.with(mContext).load(Uri.parse(childsnapshot.child("image_uri").getValue().toString())).into(holder.mImageView);
                         }
             }
 

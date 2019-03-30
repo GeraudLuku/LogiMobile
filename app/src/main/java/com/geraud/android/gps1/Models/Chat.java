@@ -5,6 +5,7 @@ import java.util.ArrayList;
 
 public class Chat implements Serializable {
     private String chatId;
+    private Boolean selected = false;
     private ArrayList<User> userObjectArrayList = new ArrayList<>();
 
     public Chat(String chatId) {
@@ -22,5 +23,13 @@ public class Chat implements Serializable {
     //add a user object to array list
     public void addUserToArrayList(User mUser){
         userObjectArrayList.add(mUser);
+    }
+
+    public Boolean getSelected() {
+        return selected;
+    }
+
+    public void setSelected(Boolean selected) {
+        this.selected = selected;
     }
 }

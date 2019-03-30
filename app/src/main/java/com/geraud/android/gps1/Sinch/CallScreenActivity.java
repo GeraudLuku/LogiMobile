@@ -72,7 +72,7 @@ public class CallScreenActivity extends BaseActivity {
         if (call != null) {
             call.addCallListener(new SinchCallListener());
             mCallerName.setText(mCallName);
-            Glide.with(this).load(mCallImage).into(mCallerImage);
+            Glide.with(getApplicationContext()).load(mCallImage).into(mCallerImage);
             mCallState.setText(call.getState().toString());
         } else {
             Log.e(TAG, "Started with invalid callId, aborting.");
@@ -140,18 +140,19 @@ public class CallScreenActivity extends BaseActivity {
 
         @Override
         public void onCallEnded(Call call) {
+
             CallEndCause cause = call.getDetails().getEndCause();
-            Log.d(TAG, "Call ended. Reason: " + cause.toString());
+            Toast.makeText(getApplicationContext(), "Call ended. Reason: " + cause.toString(), Toast.LENGTH_SHORT).show();
             mAudioPlayer.stopProgressTone();
             setVolumeControlStream(AudioManager.USE_DEFAULT_STREAM_TYPE);
             String endMsg = "Call ended: " + call.getDetails().toString();
-            Toast.makeText(CallScreenActivity.this, endMsg, Toast.LENGTH_LONG).show();
+            Toast.makeText(getApplicationContext(), endMsg, Toast.LENGTH_LONG).show();
             endCall();
         }
 
         @Override
         public void onCallEstablished(Call call) {
-            Log.d(TAG, "Call established");
+            Toast.makeText(getApplicationContext(), "Call established", Toast.LENGTH_SHORT).show();
             mAudioPlayer.stopProgressTone();
             mCallState.setText(call.getState().toString());
             setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);

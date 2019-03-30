@@ -9,8 +9,12 @@
         android:id="@+id/text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
-        android:layout_margin="10dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="10dp"
         android:text="@string/you_want_to"
         android:textSize="20sp"
         android:textStyle="bold" />
@@ -22,7 +26,7 @@
         android:layout_below="@+id/text"
         android:layout_centerHorizontal="true"
         android:layout_margin="10dp"
-        android:background="@drawable/round_coner"
+        android:background="@drawable/round_corner"
         android:text="@string/add_place_to_map" />
 
     <Button
@@ -32,7 +36,7 @@
         android:layout_below="@+id/addPlaceToMap"
         android:layout_centerHorizontal="true"
         android:layout_margin="10dp"
-        android:background="@drawable/round_coner"
+        android:background="@drawable/round_corner"
         android:text="@string/add_geo_boundary" />
 
 </RelativeLayout>

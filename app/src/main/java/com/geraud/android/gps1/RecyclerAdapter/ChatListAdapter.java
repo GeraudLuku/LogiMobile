@@ -12,6 +12,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
 import com.geraud.android.gps1.Chat.ChatActivity;
 import com.geraud.android.gps1.Models.Chat;
 import com.geraud.android.gps1.Models.ChatInfo;
@@ -71,10 +72,9 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ChatLi
                     if (dataSnapshot.exists())
                         for (DataSnapshot dc : dataSnapshot.getChildren())
                             if (!dc.getKey().equals(mPhone)) {
-
                                 User user = dc.getValue(User.class);
 
-                                holder.mImage.setImageURI(Uri.parse(user.getImage_uri()));
+                                Glide.with(mContext).load(Uri.parse(user.getImage_uri())).into(holder.mImage);
                                 holder.mTitle.setText(user.getName());
 
                                 mChatInfo.get(holder.getAdapterPosition()).setImage(user.getImage_uri());
@@ -110,7 +110,7 @@ public class ChatListAdapter extends RecyclerView.Adapter<ChatListAdapter.ChatLi
                 }
             });
 
-            holder.mImage.setImageURI(Uri.parse(mChatInfo.get(position).getImage()));
+            Glide.with(mContext).load(Uri.parse(mChatInfo.get(position).getImage())).into(holder.mImage);
             holder.mTitle.setText(mChatInfo.get(position).getName());
         }
 

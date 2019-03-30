@@ -44,13 +44,13 @@ public class PeopleMarkerInfoWindow implements GoogleMap.InfoWindowAdapter {
         //[0] online [1] offline [2] away
         if (userInfo.getStatus() == 0) {
             infosnippet.setTextColor(Color.GREEN);
-            infosnippet.setText("ONLINE");
+            infosnippet.setText(mContext.getString(R.string.online));
         } else if (userInfo.getStatus() == 1) {
             infosnippet.setTextColor(Color.RED);
-            infosnippet.setText("OFFLINE");
+            infosnippet.setText(mContext.getString(R.string.offline));
         } else if (userInfo.getStatus() == 2) {
             infosnippet.setTextColor(Color.YELLOW);
-            infosnippet.setText("AWAY");
+            infosnippet.setText(mContext.getString(R.string.away));
         }
         //glide to set image on the image view of the info window
         Glide.with(mContext)

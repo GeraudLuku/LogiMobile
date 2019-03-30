@@ -5,6 +5,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.ContactsContract;
 import android.telephony.TelephonyManager;
+import android.widget.Toast;
 
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -15,11 +16,14 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Contacts {
 
     private Context mContext;
-    private DatabaseReference mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("USER");
+
+    private DatabaseReference mUserDatabaseReference = FirebaseDatabase.getInstance().getReference().child("USER");
+
     private List<String> mContacts = new ArrayList<>();
 
     public Contacts(Context context) {
@@ -30,12 +34,12 @@ public class Contacts {
     private String getCountryISO() {
         String iso = null;
 
-        TelephonyManager telephonyManager = (TelephonyManager) mContext.getSystemService(mContext.TELEPHONY_SERVICE);
+        TelephonyManager telephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         if (telephonyManager.getNetworkCountryIso() != null)
             if (!telephonyManager.getNetworkCountryIso().equals(""))
                 iso = telephonyManager.getNetworkCountryIso();
 
-        return CountryToPhonePrefix.getPhone(iso);
+        return CountryToPhonePrefix.getPhone(Objects.requireNonNull(iso,"ISO Code Cant Be Null"));
     }
 
     public List<String> getAllContacts() {
@@ -44,30 +48,35 @@ public class Contacts {
 
         Uri uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
         Cursor cursor = mContext.getContentResolver().query(uri, new String[]{ContactsContract.CommonDataKinds.Phone.NUMBER}, null, null, null);
-        cursor.moveToFirst();
-        while (cursor.moveToNext()) {
+        if (cursor != null)
+            cursor.moveToFirst();
 
-            //String name = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
 
-            String phone = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
-            phone = phone.replace(" ", "");
-            phone = phone.replace("-", "");
-            phone = phone.replace("(", "");
-            phone = phone.replace(")", "");
+                //String name = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
 
-            if (!String.valueOf(phone.charAt(0)).equals("+")) //if the phone number doesn't have a country code then the number is considered of your country
-                phone = ISOPrefix + phone;
+                String phone = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                phone = phone.replace(" ", "");
+                phone = phone.replace("-", "");
+                phone = phone.replace("(", "");
+                phone = phone.replace(")", "");
 
-            checkIfUsesApp(phone);
-            cursor.moveToNext();
+                if (!String.valueOf(phone.charAt(0)).equals("+")) //if the phone number doesn't have a country code then the number is considered of your country
+                    phone = ISOPrefix + phone;
+
+                checkIfUsesApp(phone);
+                cursor.moveToNext();
+            }
         }
-        cursor.close();
+        if (cursor != null)
+            cursor.close();
+
         return mContacts;
     }
 
     private void checkIfUsesApp(final String phone) {
-        //get the mContacts from firebase
-        Query query = mDatabaseReference.orderByChild("phone").equalTo(phone);
+        Query query = mUserDatabaseReference.orderByChild("phone").equalTo(phone);
         query.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -77,7 +86,7 @@ public class Contacts {
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                Toast.makeText(mContext, "CheckIfUsesApp ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
     }

@@ -14,7 +14,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.firebase.geofire.LocationCallback;
@@ -64,6 +66,8 @@ public class ChatActivity extends BaseActivity {
     private ImageView mMapLocation, mCall, mImage;
     private TextView mName;
 
+    private User mUserInfo;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -91,7 +95,7 @@ public class ChatActivity extends BaseActivity {
 
         //set name and image of chat
         mName.setText(mChatInfoObject.getName());
-        mImage.setImageURI(Uri.parse(mChatInfoObject.getImage()));
+        Glide.with(getApplicationContext()).load(Uri.parse(mChatInfoObject.getImage())).into(mImage);
 
         //call function and map function
         mCall.setOnClickListener(new View.OnClickListener() {
@@ -125,6 +129,24 @@ public class ChatActivity extends BaseActivity {
                 openGallery();
             }
         });
+
+        //get current user Object
+        FirebaseDatabase.getInstance().getReference().child("USER").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).addListenerForSingleValueEvent(
+                new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists())
+                            for (DataSnapshot dc : dataSnapshot.getChildren())
+                                mUserInfo = dc.getValue(User.class);
+                        Toast.makeText(getApplicationContext(), "Current user info gotten sucessfully", Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                }
+        );
 
         initializeMessage();
         initializeMedia();
@@ -240,9 +262,20 @@ public class ChatActivity extends BaseActivity {
 
         for (User mUser : mChatObject.getUserObjectArrayList())
             if (!mUser.getPhone().equals(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber())) {
-                new SendNotification(message,
-                        "New Message",
-                        mUser.getNotificationKey());
+                if(mChatInfoObject.getType().equals("single")){
+                    new SendNotification(
+                            message,
+                            mUserInfo.getName(),
+                            mUser.getNotificationKey()
+                    );
+                }else if (mChatInfoObject.getType().equals("group")){
+                    new SendNotification(
+                            String.format(" %s : %s ",mUserInfo.getName() , message),
+                            mChatInfoObject.getName(),
+                            mUser.getNotificationKey()
+                    );
+                }
+
             }
         //here also update the last message section in Info database
         mChatInfoDb.child("lastMessage").setValue(newMessageMap);

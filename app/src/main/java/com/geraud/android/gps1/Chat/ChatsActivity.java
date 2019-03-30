@@ -52,9 +52,9 @@ public class ChatsActivity extends AppCompatActivity {
                 switch (menuItem.getItemId()) {
                     case R.id.bottom_chat_camera:
                         //open camera
-                        Intent cameraintent = new Intent(getApplicationContext(),CameraActivity.class);
-                        cameraintent.putExtra("chat","chat");
-                        startActivity(cameraintent);
+                        Intent cameraIntent = new Intent(getApplicationContext(),CameraActivity.class);
+                        cameraIntent.putExtra("chat","chatsActivity");
+                        startActivity(cameraIntent);
                         return true;
                     default:
                         return false;

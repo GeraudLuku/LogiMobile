@@ -13,9 +13,8 @@
         android:layout_alignTop="@+id/infowindow_people_name"
         android:layout_alignParentStart="true"
         android:layout_marginStart="9dp"
-        android:layout_marginLeft="16dp"
         android:layout_marginTop="-2dp"
-        android:src="@drawable/noimage" />
+        tools:src="@drawable/test_image" />
 
     <TextView
         android:id="@+id/infowindow_people_name"
@@ -37,6 +36,7 @@
         android:layout_alignParentTop="true"
         android:layout_marginStart="154dp"
         android:layout_marginTop="82dp"
+        android:textColor="@color/green"
         tools:text="ONLINE" />
 
 
@@ -47,6 +47,7 @@
         android:layout_alignParentTop="true"
         android:layout_marginStart="243dp"
         android:layout_marginTop="76dp"
-        android:src="@drawable/options" />
+        android:src="@drawable/options"
+        android:contentDescription="@string/image_of_the_user" />
 
 </RelativeLayout>

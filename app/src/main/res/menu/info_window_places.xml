@@ -3,6 +3,6 @@
     <item
         android:id="@+id/gotoMenuBtn"
         android:icon="@drawable/direction_btn"
-        android:title="GO-TO" />
+        android:title="@string/go_to" />
 
 </menu>

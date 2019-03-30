@@ -1,68 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".Chat.ChatsActivity">
+    android:layout_height="match_parent">
 
     <android.support.v7.widget.Toolbar
-        android:padding="2dp"
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
         android:layout_marginStart="0dp"
         android:layout_marginTop="0dp"
         android:layout_marginEnd="0dp"
         android:background="@color/colorPrimary"
         android:minHeight="?attr/actionBarSize"
+        android:padding="2dp"
         app:layout_collapseMode="pin"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:logo="@mipmap/ic_launcher"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
-        app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-        app:title="Logi"
         app:subtitle="Chats"
-        app:logo="@mipmap/ic_launcher_round"
         app:subtitleTextColor="@color/white"
+        app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:title="@string/app_name"
         app:titleTextColor="@color/white" />
 
     <android.support.design.widget.BottomNavigationView
         android:id="@+id/chat_activity_bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginEnd="0dp"
+        android:layout_marginBottom="1dp"
         app:menu="@menu/chat_activity_bottom_sheet" />
 
     <FrameLayout
         android:id="@+id/chat_activity_main_container"
-        android:layout_width="0dp"
-        android:layout_height="666dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/chat_activity_bottom_navigation"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_width="match_parent"
+        android:layout_height="500dp"
+        android:layout_above="@+id/chat_activity_bottom_navigation"
+        android:layout_below="@+id/toolbar"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="0dp"
+        android:layout_marginBottom="1dp" />
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/btn_new_chat"
         android:layout_width="55dp"
         android:layout_height="55dp"
-        android:layout_marginEnd="28dp"
-        android:layout_marginBottom="32dp"
-        android:background="@android:color/white"
+        android:layout_alignBottom="@+id/chat_activity_main_container"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="10dp"
+        android:background="@android:color/transparent"
         android:clickable="true"
+        android:focusable="true"
         android:src="@drawable/add_message"
-        android:visibility="visible"
-        app:layout_constraintBottom_toTopOf="@+id/chat_activity_bottom_navigation"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:focusable="true" />
-</android.support.constraint.ConstraintLayout>
+        android:visibility="visible" />
+</RelativeLayout>

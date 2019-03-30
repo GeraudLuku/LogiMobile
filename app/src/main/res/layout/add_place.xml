@@ -17,35 +17,41 @@
         android:id="@+id/place_image"
         android:layout_width="150dp"
         android:layout_height="150dp"
-        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
-        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
         android:layout_marginLeft="16dp"
         android:layout_marginTop="46dp"
         android:layout_marginRight="16dp"
         tools:src="@android:drawable/ic_input_add" />
 
     <EditText
-        android:background="@drawable/edittext"
-        android:padding="10dp"
         android:id="@+id/place_name"
         android:layout_width="250dp"
-        android:layout_centerHorizontal="true"
         android:layout_height="wrap_content"
         android:layout_below="@+id/place_image"
+        android:layout_centerHorizontal="true"
         android:layout_marginTop="26dp"
-        android:hint="@string/name" />
+        android:background="@drawable/edittext"
+        android:hint="@string/name"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        android:padding="10dp"
+        tools:targetApi="o" />
 
     <EditText
-        android:background="@drawable/edittext"
-        android:padding="10dp"
         android:id="@+id/place_description"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@+id/place_name"
         android:layout_alignParentStart="true"
         android:layout_marginTop="26dp"
-        android:hint="@string/what_is_the_place_about" />
+        android:background="@drawable/edittext"
+        android:hint="@string/what_is_the_place_about"
+        android:importantForAutofill="no"
+        android:inputType="textMultiLine"
+        android:padding="10dp"
+        tools:targetApi="o" />
 
     <Spinner
         android:id="@+id/place_spinner"

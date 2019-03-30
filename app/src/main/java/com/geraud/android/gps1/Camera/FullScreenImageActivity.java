@@ -23,6 +23,7 @@ import com.geraud.android.gps1.Models.Stories;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.Utils.RandomStringGenerator;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
@@ -32,20 +33,23 @@ import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
 public class FullScreenImageActivity extends AppCompatActivity {
+    private static final int REQUEST_PERMISSION = 0;
 
     private EditText mDescriptionInput;
     private Button mPostButton;
     private String mDescription;
 
-    private Uri imageUri;
+    private Uri mImageUri;
 
     private StorageReference mStorageReference;
     private DatabaseReference mDatabaseReference;
 
-    private double latitude = 0;
-    private double longitude = 0;
+    private LocationManager mLocationManager;
+    private Location mLocation;
+
     private boolean location = true;
-    private static final String TYPE = "image";
+    private double mLatitude = 0;
+    private double mLongitude = 0;
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
@@ -68,25 +72,26 @@ public class FullScreenImageActivity extends AppCompatActivity {
         setContentView(R.layout.activity_full_screen_image);
 
         mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORIES").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
-        mStorageReference = FirebaseStorage.getInstance().getReference();
+        mStorageReference = FirebaseStorage.getInstance().getReference().child("STORIES").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
 
-        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_PERMISSION);
+        } else {
+            mLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            mLongitude = mLocation.getLongitude();
+            mLatitude = mLocation.getLatitude();
         }
-        Location location = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        longitude = location.getLongitude();
-        latitude = location.getLatitude();
 
         ImageView fullScreenImageView = findViewById(R.id.fullScreenImageView);
 
         Intent callingActivityIntent = getIntent();
         if (callingActivityIntent != null) {
-            imageUri = callingActivityIntent.getData();
-            if (imageUri != null && fullScreenImageView != null) {
+            mImageUri = callingActivityIntent.getData();
+            if (mImageUri != null && fullScreenImageView != null) {
                 Glide.with(this)
-                        .load(imageUri)
+                        .load(mImageUri)
                         .into(fullScreenImageView);
             }
         }
@@ -98,7 +103,7 @@ public class FullScreenImageActivity extends AppCompatActivity {
             public void onClick(View v) {
                 if (getIntent().getExtras() != null) {
                     Intent transferIntent = new Intent(getApplicationContext(), TransferActivity.class);
-                    transferIntent.putExtra("uri", imageUri);
+                    transferIntent.putExtra("uri", mImageUri);
                     transferIntent.putExtra("text", mDescriptionInput.getText().toString() == null ? " " : mDescriptionInput.getText().toString());
                     startActivity(transferIntent);
                     finish();
@@ -111,36 +116,49 @@ public class FullScreenImageActivity extends AppCompatActivity {
 
     private void postStatus() {
 
-        final long currentTime = System.currentTimeMillis();
-
         mDescription = mDescriptionInput.getText().toString() == null ? " " : mDescriptionInput.getText().toString();
 
-        if (latitude == 0 && longitude == 0) {
+        if (mLatitude == 0 && mLongitude == 0)
             location = false;
-        }
 
-        StorageReference filepath = mStorageReference.child("STORIES").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child(RandomStringGenerator.randomString() + ".jpg");
-        filepath.putFile(imageUri).addOnCompleteListener(new OnCompleteListener<UploadTask.TaskSnapshot>() {
+        StorageReference filepath = mStorageReference.child(RandomStringGenerator.randomString() + ".jpg");
+        UploadTask uploadTask = filepath.putFile(mImageUri);
+        uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
             @Override
-            public void onComplete(@NonNull Task<UploadTask.TaskSnapshot> task) {
-                if (task.isSuccessful()) {
-                    final String downloadURI = task.getResult().getDownloadUrl().toString();
-                    Stories stories = new Stories(location, downloadURI, mDescription, currentTime, latitude, longitude, TYPE, FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
-                    mDatabaseReference.push().setValue(stories).addOnCompleteListener(new OnCompleteListener<Void>() {
-                        @Override
-                        public void onComplete(@NonNull Task<Void> task) {
-                            if (task.isSuccessful()) {
-                                Toast.makeText(getApplicationContext(), "Succesfully created story", Toast.LENGTH_SHORT).show();
-                                finish();
-                            } else {
-                                Toast.makeText(getApplicationContext(), "Couldnt create story", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    });
-                } else {
-                    Toast.makeText(getApplicationContext(), "Couldnt upload status", Toast.LENGTH_SHORT).show();
-                }
+            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+
+                Stories stories = new Stories(location, taskSnapshot.getDownloadUrl().toString(),
+                        mDescription, System.currentTimeMillis(), mLatitude, mLongitude, "image",
+                        FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
+
+                mDatabaseReference.push().setValue(stories).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            Toast.makeText(getApplicationContext(), "Successfully created story", Toast.LENGTH_SHORT).show();
+                            finish();
+                        } else
+                            Toast.makeText(getApplicationContext(), "Couldn't create story", Toast.LENGTH_SHORT).show();
+                    }
+                });
             }
         });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        switch (requestCode) {
+            case REQUEST_PERMISSION:
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                        ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(getApplicationContext(), "Coarse And Fine Location Permission Denied", Toast.LENGTH_SHORT).show();
+                }
+                mLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                mLongitude = mLocation.getLongitude();
+                mLatitude = mLocation.getLatitude();
+                Toast.makeText(getApplicationContext(), "Coarse And Fine Location Permission Granted", Toast.LENGTH_SHORT).show();
+        }
     }
 }

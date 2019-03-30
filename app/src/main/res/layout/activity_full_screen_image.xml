@@ -37,7 +37,7 @@
         android:layout_marginTop="-3dp"
         android:layout_marginEnd="11dp"
         android:background="@drawable/button"
-        android:text="POST"
+        android:text="@string/post"
         android:textColor="@android:color/white" />
 
 </RelativeLayout>
