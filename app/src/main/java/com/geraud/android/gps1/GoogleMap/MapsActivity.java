@@ -2,6 +2,7 @@ package com.geraud.android.gps1.GoogleMap;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -9,6 +10,10 @@ import android.content.Intent;
 import android.content.IntentSender;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -34,8 +39,10 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
@@ -116,7 +123,10 @@ import com.google.firebase.storage.UploadTask;
 import com.google.gson.Gson;
 import com.sinch.android.rtc.SinchError;
 import com.sinch.android.rtc.calling.Call;
+import com.theartofdev.edmodo.cropper.CropImage;
+import com.theartofdev.edmodo.cropper.CropImageView;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -139,6 +149,7 @@ public class MapsActivity extends BaseActivity implements
 
     private static final int REQUEST_PERMISSION_CODE = 1;
     private static final int REQUEST_CHECK_SETTINGS = 123;
+    private static final int PLACE_INTENT_REQUEST_CODE = 12;
     private static final String POPUP_CONSTANT = "mPopup";
     private static final String POPUP_FORCE_SHOW_ICON = "setForceShowIcon";
 
@@ -146,6 +157,14 @@ public class MapsActivity extends BaseActivity implements
     private LinearLayout mBottomPeekLayout;
 
     private SeekBar mVerticalSeekBar;
+
+    private Dialog mUserInfoDialog;
+    private TextView closeText,
+            locationView;
+    private EditText userName;
+    private ImageButton changeImage, changeName;
+    private ImageView profileImage;
+    private Button updateInfo;
 
     private DatabaseReference mDatabaseReference;
     private DatabaseReference mSearchRef;
@@ -284,6 +303,16 @@ public class MapsActivity extends BaseActivity implements
             }
         });
 
+        mUserInfoDialog = new Dialog(getApplicationContext());
+        //settings for user profile info
+        ImageButton profileSettings = findViewById(R.id.userProfileSettings);
+        profileSettings.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                createUserInfoDialog();
+            }
+        });
+
 
         //listen constantly to changes in text to the editText
         EditText mSearchBar = findViewById(R.id.search_text);
@@ -396,7 +425,7 @@ public class MapsActivity extends BaseActivity implements
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
                     //change search to Users
-                    mSearchRef = mDatabaseReference.child("USER");
+                    mSearchRef = mDatabaseReference.child("USER").child("userInfo");
                     mToggleSearchBtn.setText("L");
                 } else {
                     //change search to Places
@@ -489,6 +518,108 @@ public class MapsActivity extends BaseActivity implements
             Toast.makeText(getApplicationContext(), "Geoqueries service Disconnected", Toast.LENGTH_SHORT).show();
         }
     };
+
+    private View.OnClickListener mUserInfoDialogClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            switch (v.getId()) {
+                case R.id.txtclose: //close dialog
+                    mUserInfoDialog.dismiss();
+                    break;
+                case R.id.changeImage: //choose image from gallery
+                    CropImage.activity()
+                            .setGuidelines(CropImageView.Guidelines.ON)
+                            .setMinCropResultSize(512, 512)
+                            .setAspectRatio(1, 1)
+                            .start(MapsActivity.this);
+                    break;
+                case R.id.changeName:// set edit text focusable and enabled then change text
+                    userName.setEnabled(true);
+                    userName.setFocusable(true);
+                    mModified = true;
+                    break;
+                case R.id.updateInfo:
+                    if (mModified) {
+                        if (!userName.getText().toString().equals(""))
+                            mUserInfoObject.setName(userName.getText().toString());
+                        //upload image first
+                        UploadTask uploadTask = mStorageReference.child("Profile Pictures").child(USER_KEY).child(USER_KEY + ".jpg").putFile(Uri.parse(mUserInfoObject.getImage_uri()));
+                        uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                            @Override
+                            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                mUserInfoObject.setImage_uri(Objects.requireNonNull(taskSnapshot.getDownloadUrl(), "update Info downloadUri Cant Be Null").toString());
+                                mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").setValue(mUserInfoObject).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        if (task.isSuccessful()) {
+                                            Toast.makeText(getApplicationContext(), "Update Successful", Toast.LENGTH_SHORT).show();
+                                            mUserInfoDialog.dismiss();
+                                        } else {
+                                            Toast.makeText(getApplicationContext(), "Couldn't Update User Object", Toast.LENGTH_SHORT).show();
+                                            mUserInfoDialog.dismiss();
+                                        }
+                                    }
+                                });
+                            }
+                        });
+
+                    } else
+                        mUserInfoDialog.dismiss();
+                    break;
+                default:
+                    Toast.makeText(getApplicationContext(), "Invalid Click Id For Dialog", Toast.LENGTH_SHORT).show();
+            }
+        }
+    };
+
+    private boolean mModified = false;
+
+    private void createUserInfoDialog() {
+        //change user name and image
+        // will initialise the dailog here first work with the dailog variables
+        mUserInfoDialog.setContentView(R.layout.user_settings);
+
+        closeText = mUserInfoDialog.findViewById(R.id.txtclose);
+        locationView = mUserInfoDialog.findViewById(R.id.locationView);
+        userName = mUserInfoDialog.findViewById(R.id.nameEdittext);
+        changeImage = mUserInfoDialog.findViewById(R.id.changeImage);
+        profileImage = mUserInfoDialog.findViewById(R.id.imageView);
+        updateInfo = mUserInfoDialog.findViewById(R.id.updateInfo);
+        changeName = mUserInfoDialog.findViewById(R.id.changeName);
+
+        //setting user info
+        Glide.with(getApplicationContext()).load(mUserInfoObject.getImage_uri()).into(profileImage);
+        userName.setText(mUserInfoObject.getName());
+        mGeoFire.getLocation(mUserInfoObject != null ? mUserInfoObject.getPhone() : null, new LocationCallback() {
+            @Override
+            public void onLocationResult(String key, GeoLocation location) {
+                if (location != null) {
+                    try {
+                        Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
+                        List<Address> address = geocoder.getFromLocation(location.latitude, location.longitude, 1);
+                        locationView.setText(String.format(Locale.getDefault(), "Currently Located At : %s, %s %s", address.get(0).getFeatureName(), address.get(0).getLocality(), address.get(0).getCountryName()));
+                    } catch (IOException e) {
+                        Toast.makeText(getApplicationContext(), "Couldn't Get Address Of Your Location", Toast.LENGTH_SHORT).show();
+                    }
+                } else
+                    Toast.makeText(getApplicationContext(), "Your Location Is Null", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Toast.makeText(getApplicationContext(), "Load Location Dialog ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        //onClick Actions
+        closeText.setOnClickListener(mUserInfoDialogClickListener);
+        changeImage.setOnClickListener(mUserInfoDialogClickListener);
+        changeName.setOnClickListener(mUserInfoDialogClickListener);
+        updateInfo.setOnClickListener(mUserInfoDialogClickListener);
+
+        Objects.requireNonNull(mUserInfoDialog.getWindow(), "UserInfoDialog Window Cant Be Null").setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        mUserInfoDialog.show();
+    }
 
 
     private int INTERVAL = 1000;
@@ -670,11 +801,11 @@ public class MapsActivity extends BaseActivity implements
         public void onMapClick(LatLng latLng) {
             //set toolbar visible / invisible on tap
             if (mToolBarState) {
-                Objects.requireNonNull(getSupportActionBar(),"Support Action Bar Cant Be Null").hide();
+                Objects.requireNonNull(getSupportActionBar(), "Support Action Bar Cant Be Null").hide();
                 mVerticalSeekBar.setVisibility(View.INVISIBLE);
                 mToolBarState = false;
             } else {
-                Objects.requireNonNull(getSupportActionBar(),"Support Action Bar Cant Be Null").show();
+                Objects.requireNonNull(getSupportActionBar(), "Support Action Bar Cant Be Null").show();
                 mVerticalSeekBar.setVisibility(View.VISIBLE);
                 mToolBarState = true;
             }
@@ -822,12 +953,12 @@ public class MapsActivity extends BaseActivity implements
                                 DatabaseReference chatInfoDB = mDatabaseReference.child("CHAT").child(key).child("info");
 
                                 mNewChatMap.put("id", key);
-                                mNewChatMap.put("lastMessage/", null);
+                                mNewChatMap.put("lastMessage/", false);
                                 mNewChatMap.put("users/" + USER_KEY, true);
                                 mNewChatMap.put("users/" + userInfo.getPhone(), true);
-                                mNewChatMap.put("name", null);
+                                mNewChatMap.put("name", false);
                                 mNewChatMap.put("type", "single");
-                                mNewChatMap.put("image", null);
+                                mNewChatMap.put("image", false);
 
                                 Map<String, String> myChatMap = new HashMap<>();
                                 myChatMap.put("type", "single");
@@ -1080,6 +1211,8 @@ public class MapsActivity extends BaseActivity implements
                     break;
                 case R.id.places:
                     //Todo: Create Activity That Will Show All Places And Return Location On Activity Result
+                    Intent i = new Intent(getApplicationContext(), PlacesActivity.class);
+                    startActivityForResult(i, PLACE_INTENT_REQUEST_CODE);
                     break;
             }
         }
@@ -1103,19 +1236,20 @@ public class MapsActivity extends BaseActivity implements
     //method to load Current user details into dashboard
     private ImageView mProfilePicture;
     private TextView mProfileName;
+    private User mUserInfoObject;
 
     public void UserDetails() {
-        mDatabaseReference.child("USER").child(USER_KEY).addListenerForSingleValueEvent(new ValueEventListener() {
+        mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
                     for (DataSnapshot doc : dataSnapshot.getChildren()) {
-                        User user = doc.getValue(User.class);
-                        if (user != null) {
+                        mUserInfoObject = doc.getValue(User.class);
+                        if (mUserInfoObject != null) {
                             Glide.with(getApplicationContext()) //load profile picture
-                                    .load(user.getImage_uri())
+                                    .load(mUserInfoObject.getImage_uri())
                                     .into(mProfilePicture);
-                            mProfileName.setText(user.getName());
+                            mProfileName.setText(mUserInfoObject.getName());
                         }
                     }
                 }
@@ -1238,7 +1372,7 @@ public class MapsActivity extends BaseActivity implements
                         mFriendsMarker.remove();
                     for (final String contact : mContactList) {
                         //first query the users section of the database to get the Contact information
-                        mDatabaseReference.child("USER").child(contact).addListenerForSingleValueEvent(new ValueEventListener() {
+                        mDatabaseReference.child("USER").child(contact).child("userInfo").addListenerForSingleValueEvent(new ValueEventListener() {
                             @Override
                             public void onDataChange(DataSnapshot dataSnapshot) {
                                 if (dataSnapshot.exists()) {
@@ -1491,19 +1625,19 @@ public class MapsActivity extends BaseActivity implements
     //make user online
     private void makeUserOnline() {
         //update Realtime Database status value
-        mDatabaseReference.child("USER").child(USER_KEY).child("status").setValue(0);
+        mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").child("status").setValue(0);
         // Adding on disconnect hook
-        mDatabaseReference.child("USER").child(USER_KEY).child("status").onDisconnect().setValue(1);
+        mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").child("status").onDisconnect().setValue(1);
     }
 
     //make user offline
     private void makeUserOffline() {
         //change value in Realtime Database so that the cloud function will automatically change it in the realtime database
-        mDatabaseReference.child("USER").child(USER_KEY).child("status").setValue(1);
+        mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").child("status").setValue(1);
     }
 
     private void makeUserAway() {
-        mDatabaseReference.child("USER").child(USER_KEY).child("status").setValue(2);
+        mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").child("status").setValue(2);
     }
 
     //this might be useful when i will implement the search bar so that when u press on
@@ -1518,29 +1652,34 @@ public class MapsActivity extends BaseActivity implements
             goTO(new LatLng(latitude, longitude));
         }
 
-        if (requestCode == 1) {
+        if (requestCode == PLACE_INTENT_REQUEST_CODE) {
             if (resultCode == Activity.RESULT_OK) {
+                LatLng latLng = new LatLng(data.getDoubleExtra("latitude", 0), data.getDoubleExtra("longitude", 0));
 
-                double latitude = data.getDoubleExtra("latitude", 0);
-                double longitude = data.getDoubleExtra("longitude", 0);
+                //Moving the camera
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+                //Animating the camera
+                mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+                //update value on seekbar
+                mVerticalSeekBar.setProgress(15);
 
-                if (latitude == 0 && longitude == 0) {
-                    Toasty.info(this, "No location gotten from the activity", 3000).show();
-                } else {
-                    //move to that location on the map
-                    LatLng latLng = new LatLng(latitude, longitude);
-                    //Moving the camera
-                    mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-
-                    //Animating the camera
-                    mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
-                }
-
+                Toast.makeText(getApplicationContext(), "Result gotten from Place Activity", Toast.LENGTH_SHORT).show();
             }
             if (resultCode == Activity.RESULT_CANCELED) {
                 //Write your code if there's no result
-                Toast.makeText(getApplicationContext(), "No result gotten from intent", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "No result gotten from Place Activity", Toast.LENGTH_SHORT).show();
             }
+        }
+
+        if (requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE) {
+            CropImage.ActivityResult result = CropImage.getActivityResult(data);
+            if (resultCode == RESULT_OK) {
+                profileImage.setImageURI(result.getUri());
+                mUserInfoObject.setImage_uri(result.getUri().toString());
+                mModified = true;
+            } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE)
+                Toasty.error(getApplicationContext(), result.getError().toString(), Toast.LENGTH_SHORT, true).show();
+
         }
     }
 

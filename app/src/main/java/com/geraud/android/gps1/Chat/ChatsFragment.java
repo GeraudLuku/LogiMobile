@@ -125,7 +125,7 @@ public class ChatsFragment extends Fragment {
     }
 
     private void getUserData(User mUser, final String chatId) {
-        DatabaseReference mUserDb = FirebaseDatabase.getInstance().getReference().child("USER").child(mUser.getPhone());
+        DatabaseReference mUserDb = FirebaseDatabase.getInstance().getReference().child("USER").child(mUser.getPhone()).child("userInfo");
         mUserDb.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {

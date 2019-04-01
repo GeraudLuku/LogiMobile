@@ -27,8 +27,9 @@
                 android:id="@+id/DatabaseConnectionStatus"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
-                android:layout_marginRight="10dp"
+                android:layout_marginEnd="10dp"
                 android:background="@drawable/round"
+                android:contentDescription="@string/conection_status_icon"
                 android:elevation="20dp" />
 
             <TextView
@@ -61,7 +62,7 @@
                     android:id="@+id/chat"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:layout_marginRight="15dp"
+                    android:layout_marginEnd="15dp"
                     android:background="@drawable/round_corner"
                     android:gravity="center_vertical"
                     android:padding="5dp">
@@ -69,13 +70,14 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
+                        android:contentDescription="@string/chat_image_button"
                         android:src="@drawable/chat_btn" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginLeft="32dp"
-                        android:text="Chats"
+                        android:layout_marginStart="32dp"
+                        android:text="@string/chats"
                         android:textSize="16sp" />
                 </LinearLayout>
 
@@ -90,13 +92,14 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
+                        android:contentDescription="@string/place_image_button_view"
                         android:src="@drawable/place_icon" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginLeft="32dp"
-                        android:text="Places"
+                        android:layout_marginStart="32dp"
+                        android:text="@string/places"
                         android:textSize="16sp" />
 
                 </LinearLayout>
@@ -116,7 +119,7 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:layout_marginRight="15dp"
+                    android:layout_marginEnd="15dp"
                     android:background="@drawable/round_corner"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
@@ -124,17 +127,17 @@
 
                     <Switch
                         android:id="@+id/showLocation"
-                        android:checked="true"
-                        android:thumbTint="@color/colorPrimary"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:thumbTint="@color/colorPrimary" />
 
                     <TextView
                         android:id="@+id/showLocationTxt"
-                        android:layout_marginLeft="5dp"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Hide Location" />
+                        android:layout_marginStart="5dp"
+                        android:text="@string/hide_location" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -146,17 +149,17 @@
 
                     <Switch
                         android:id="@+id/showGeofences"
-                        android:checked="true"
-                        android:thumbTint="@color/_light_green"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:thumbTint="@color/_light_green" />
 
                     <TextView
                         android:id="@+id/showGeofencesTxt"
-                        android:layout_marginLeft="5dp"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Hide Geofences" />
+                        android:layout_marginStart="5dp"
+                        android:text="@string/hide_geofences" />
 
                 </LinearLayout>
 

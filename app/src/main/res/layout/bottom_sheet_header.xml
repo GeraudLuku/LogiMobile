@@ -1,27 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_margin="10dp"
-    android:gravity="center_vertical"
     android:orientation="vertical">
 
     <de.hdodenhof.circleimageview.CircleImageView
         android:id="@+id/bottomSheet_Image"
         android:layout_width="50dp"
         android:layout_height="50dp"
-        android:layout_marginLeft="16dp"
-        tools:src="@drawable/noimage" />
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="6dp"
+        android:layout_marginTop="12dp"
+        tools:src="@drawable/lou_pie" />
 
     <TextView
         android:id="@+id/bottomSheet_Name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="16dp"
+        android:layout_below="@+id/bottomSheet_Image"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="5dp"
         android:layout_marginTop="16dp"
-        tools:text="Your Name Here"
+        android:paddingEnd="20dp"
+        android:textColor="@color/black"
         android:textSize="15sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        tools:text="Pinkie Pie" />
 
-</LinearLayout>
+    <ImageButton
+        android:id="@+id/userProfileSettings"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="42dp"
+        android:layout_marginEnd="33dp"
+        android:background="@android:color/transparent"
+        android:src="@drawable/settings"
+        android:contentDescription="@string/button_to_open_settings_of_user_information" />
+
+</RelativeLayout>

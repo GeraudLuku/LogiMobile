@@ -52,6 +52,10 @@ public class User implements Serializable {
         return image_uri;
     }
 
+    public void setImage_uri(String image_uri) {
+        this.image_uri = image_uri;
+    }
+
     public Integer getStatus() {
         return status;
     }

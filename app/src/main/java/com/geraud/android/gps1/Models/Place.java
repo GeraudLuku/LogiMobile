@@ -8,8 +8,6 @@ public class Place {
     private String name, creator, description, image_uri, type, desc2;
     private double latitude, longitude;
 
-    public Place() {
-    }
 
     public Place(String name, String creator, String description, String image_uri, String type, double latitude, double longitude, String des2) {
         this.name = name;
