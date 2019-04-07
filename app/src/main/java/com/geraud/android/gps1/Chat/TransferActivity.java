@@ -1,6 +1,8 @@
 package com.geraud.android.gps1.Chat;
 
 import android.Manifest;
+import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -22,6 +24,7 @@ import com.geraud.android.gps1.Models.User;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.RecyclerAdapter.TransferChatRecyclerAdapter;
 import com.geraud.android.gps1.RecyclerAdapter.TransferRecyclerAdapter;
+import com.geraud.android.gps1.Registration;
 import com.geraud.android.gps1.Utils.Contacts;
 import com.geraud.android.gps1.Utils.SendNotification;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -59,17 +62,40 @@ public class TransferActivity extends AppCompatActivity {
     private Uri mMediaUrl;
     private User mUserInfo;
 
+    private Uri mActionFilterData;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_transfer);
 
-        mDescription = getIntent().getStringExtra(FullScreenImageActivity.TEXT_EXTRA); // you can get it from either the VideoPlayActivity or FullScreenImageActivity its the same
-        mMediaUrl = Uri.parse(getIntent().getStringExtra(FullScreenImageActivity.URI_EXTRA));
+        //tying something new here DeepLinking i will get image/videos from other activities and send them through my app
+        // my app will appear in Send To of other activities and will receive either an image or video for transfer
+        //i will first check that intent , if its not null then it was called from another activity and it will replace the mDescription
+        // and mMediaUrl of this activity else if it is null continue with normal activity flow
+
+        // atleast check if you are already a user of the app
+        if (FirebaseAuth.getInstance().getCurrentUser() == null)
+            startActivity(new Intent(getApplicationContext(), Registration.class));
+
+        Intent intent = getIntent();
+        mActionFilterData = intent.getData();
+
+        // Figure out what to do based on the intent type
+        if (mActionFilterData != null && Objects.equals(intent.getType(), "image/") || Objects.equals(intent.getType(), "video/")) {
+            // Handle intents with image and video data ...
+            mDescription = ""; // you can get it from either the VideoPlayActivity or FullScreenImageActivity its the same
+            mMediaUrl = mActionFilterData;
+        } else {
+            // proceed with activity normal flow
+            mDescription = getIntent().getStringExtra(FullScreenImageActivity.TEXT_EXTRA); // you can get it from either the VideoPlayActivity or FullScreenImageActivity its the same
+            mMediaUrl = Uri.parse(getIntent().getStringExtra(FullScreenImageActivity.URI_EXTRA));
+        }
+
         mUserPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Cant Be Null").getPhoneNumber();
 
-        Button mSendBtn = findViewById(R.id.sendBtn);
-        mSendBtn.setOnClickListener(new View.OnClickListener() {
+        Button sendBtn = findViewById(R.id.sendBtn);
+        sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (mDescription != null && mMediaUrl != null)
@@ -114,7 +140,7 @@ public class TransferActivity extends AppCompatActivity {
         chatsRecyclerView.addItemDecoration(new DividerItemDecoration(chatsRecyclerView.getContext(), DividerItemDecoration.VERTICAL)); // list divider
         RecyclerView.LayoutManager chatListLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false);
         chatsRecyclerView.setLayoutManager(chatListLayoutManager);
-        mChatListAdapter = new TransferChatRecyclerAdapter(mChatList, mChatInfo, getApplicationContext(),mUserPhone);
+        mChatListAdapter = new TransferChatRecyclerAdapter(mChatList, mChatInfo, getApplicationContext(), mUserPhone);
         chatsRecyclerView.setAdapter(mChatListAdapter);
 
         RecyclerView contactsRecyclerView = findViewById(R.id.recyclerView);
@@ -267,7 +293,6 @@ public class TransferActivity extends AppCompatActivity {
         }
     }
 
-
     private void sendToChat(final Chat chat) {
         //here get the uri data and send them to the user
         DatabaseReference mChatMessagesDb = FirebaseDatabase.getInstance().getReference().child("CHAT").child(chat.getChatId()).child("message");
@@ -276,7 +301,7 @@ public class TransferActivity extends AppCompatActivity {
         String messageId = mChatMessagesDb.push().getKey();
         final DatabaseReference newMessageDb = mChatMessagesDb.child(messageId);
 
-        final HashMap<String,Object> newMessageMap = new HashMap<>();
+        final HashMap<String, Object> newMessageMap = new HashMap<>();
 
         newMessageMap.put("text", mDescription);
         newMessageMap.put("creator", mUserPhone);
@@ -332,6 +357,14 @@ public class TransferActivity extends AppCompatActivity {
             }
         //here also update the last message section in Info database
         chatInfoDB.child("lastMessage").setValue(newMessageMap);
+
+        //if the action was performed for another activity send result ok back to it
+        if (mActionFilterData != null) {
+            Intent result = new Intent("com.example.RESULT_ACTION", Uri.parse("content://result_uri"));
+            setResult(Activity.RESULT_OK, result);
+            finish();
+        } else
+            finish();
     }
 
     private void checkIfChatExists(final User user) {
@@ -352,7 +385,7 @@ public class TransferActivity extends AppCompatActivity {
                     DatabaseReference userDB = FirebaseDatabase.getInstance().getReference().child("USER");
                     DatabaseReference chatInfoDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(key).child("info");
 
-                    HashMap<String,Object> newMessageMap = new HashMap<>();
+                    HashMap<String, Object> newMessageMap = new HashMap<>();
                     newMessageMap.put("id", key);
                     newMessageMap.put("lastMessage/", null); //set it to null because it will be updated just below
                     newMessageMap.put("users/" + mUserPhone, true);
@@ -361,11 +394,11 @@ public class TransferActivity extends AppCompatActivity {
                     newMessageMap.put("type", "single");
                     newMessageMap.put("image", null);
 
-                    Map<String,Object> myChatMap = new HashMap<>();
+                    Map<String, Object> myChatMap = new HashMap<>();
                     myChatMap.put("type", "single");
                     myChatMap.put("user", user.getPhone());
 
-                    Map<String,Object> singleChatMap = new HashMap<>();
+                    Map<String, Object> singleChatMap = new HashMap<>();
                     singleChatMap.put("type", "single");
                     singleChatMap.put("user", mUserPhone);
 

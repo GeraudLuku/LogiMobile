@@ -18,7 +18,6 @@
     <string name="add_place_to_map">Add Place To Map</string>
     <string name="add_geo_boundary">Add Geo-Boundary</string>
     <string name="what_is_the_place_about">What is the place about?</string>
-    <string name="name">Name</string>
     <string name="add_place">Add Place</string>
     <string name="track">Track</string>
     <string name="call">Call</string>
@@ -70,7 +69,6 @@
     <string name="picture">Picture</string>
     <string name="rose">Rose</string>
     <string name="contacts">Contacts</string>
-    <string name="name">Name</string>
     <string name="send_to">Send To ..</string>
 
     <string-array name="places_types">

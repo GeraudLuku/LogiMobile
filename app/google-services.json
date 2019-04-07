@@ -23,12 +23,12 @@
           }
         },
         {
-          "client_id": "481062136642-65paf696av4tftnurq2m5sicnm4dc2ek.apps.googleusercontent.com",
-          "client_type": 3
-        },
-        {
-          "client_id": "481062136642-65paf696av4tftnurq2m5sicnm4dc2ek.apps.googleusercontent.com",
-          "client_type": 3
+          "client_id": "481062136642-hetanfms3t53ad9upou37e4u2apnf5bc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.geraud.android.gps1",
+            "certificate_hash": "3a0b70a2889d0be31e2c48e7a7cff840b0be5ce7"
+          }
         }
       ],
       "api_key": [
@@ -37,20 +37,13 @@
         }
       ],
       "services": {
-        "analytics_service": {
-          "status": 1
-        },
         "appinvite_service": {
-          "status": 2,
           "other_platform_oauth_client": [
             {
               "client_id": "481062136642-65paf696av4tftnurq2m5sicnm4dc2ek.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
-        },
-        "ads_service": {
-          "status": 2
         }
       }
     }
