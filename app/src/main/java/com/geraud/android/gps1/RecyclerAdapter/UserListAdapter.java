@@ -9,7 +9,6 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
@@ -31,16 +30,15 @@ public class UserListAdapter extends RecyclerView.Adapter<UserListAdapter.UserLi
     @NonNull
     @Override
     public UserListViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
-        View layoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.user_item, null, false);
+        View layoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.user_item, viewGroup, false);
         RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         layoutView.setLayoutParams(lp);
 
-        UserListViewHolder rcv = new UserListViewHolder(layoutView);
-        return rcv;
+        return new UserListViewHolder(layoutView);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull UserListViewHolder holder, final int position) {
+    public void onBindViewHolder(@NonNull final UserListViewHolder holder, int position) {
 
         holder.mName.setText(mUserList.get(position).getName());
 
@@ -53,7 +51,7 @@ public class UserListAdapter extends RecyclerView.Adapter<UserListAdapter.UserLi
         holder.mAdd.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                mUserList.get(position).setSelected(isChecked);
+                mUserList.get(holder.getAdapterPosition()).setSelected(isChecked);
             }
         });
     }
@@ -63,20 +61,18 @@ public class UserListAdapter extends RecyclerView.Adapter<UserListAdapter.UserLi
         return mUserList.size();
     }
 
-    public class UserListViewHolder extends RecyclerView.ViewHolder {
+     class UserListViewHolder extends RecyclerView.ViewHolder {
 
-        public ImageView mImage;
-        public TextView mName, mPhone,mStatus;
-        public LinearLayout mLayout;
-        public CheckBox mAdd;
+        private ImageView mImage;
+        private TextView mName, mPhone;
+        private CheckBox mAdd;
 
-        public UserListViewHolder(View view) {
+        private UserListViewHolder(View view) {
             super(view);
 
             mName = view.findViewById(R.id.friend_name);
-            mName = view.findViewById(R.id.friend_number);
+            mPhone = view.findViewById(R.id.friend_number);
             mImage = view.findViewById(R.id.friend_image);
-            mLayout = view.findViewById(R.id.friend_container);
             mAdd = view.findViewById(R.id.add);
         }
     }

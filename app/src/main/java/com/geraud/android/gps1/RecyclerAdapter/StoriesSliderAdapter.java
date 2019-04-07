@@ -1,11 +1,11 @@
 package com.geraud.android.gps1.RecyclerAdapter;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
-import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.v4.view.PagerAdapter;
 import android.view.LayoutInflater;
@@ -14,24 +14,23 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.VideoView;
 
 import com.bumptech.glide.Glide;
+import com.danikula.videocache.CacheListener;
 import com.danikula.videocache.HttpProxyCacheServer;
 import com.geraud.android.gps1.Models.Stories;
 import com.geraud.android.gps1.R;
 
+import java.io.File;
 import java.util.ArrayList;
 
-public class StoriesSliderAdapter extends PagerAdapter {
+public class StoriesSliderAdapter extends PagerAdapter implements CacheListener {
     private Context mContext;
     private ArrayList<Stories> mStoriesList;
 
-    private LayoutInflater mLayoutInflater;
-
     private VideoView mVideoView;
-    private ImageView mImageView;
-    private TextView mImageTextView, mVideoTextView;
 
     private HttpProxyCacheServer mProxy;
 
@@ -80,7 +79,7 @@ public class StoriesSliderAdapter extends PagerAdapter {
 
     private HttpProxyCacheServer getProxy() {
         return new HttpProxyCacheServer.Builder(mContext)
-                .maxCacheSize(5120 * 5120 * 5120)       // 5 Gb for cache 1GB = 1024
+                .maxCacheSize(15360)       // 5 Gb for cache 1GB = 3072
                 .build();
     }
 
@@ -99,40 +98,39 @@ public class StoriesSliderAdapter extends PagerAdapter {
         return view == o;
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @NonNull
     @Override
     public Object instantiateItem(@NonNull ViewGroup container, int position) {
-        mLayoutInflater = (LayoutInflater) mContext.getSystemService(mContext.LAYOUT_INFLATER_SERVICE);
+        LayoutInflater layoutInflater = (LayoutInflater) mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         mPosition = position;
 
         if (mStoriesList.get(position).getType().equals("image")) {
-            mView = mLayoutInflater.inflate(R.layout.image_story_slide_layout, container, false);
+            mView = layoutInflater.inflate(R.layout.image_story_slide_layout, container, false);
             container.addView(mView);
 
-            mImageView = mView.findViewById(R.id.imageView);
-            mImageTextView = mView.findViewById(R.id.imageDescription);
+            ImageView imageView = mView.findViewById(R.id.imageView);
+            TextView imageTextView = mView.findViewById(R.id.imageDescription);
             View line = mView.findViewById(R.id.view);
 
             //load image with Glide on View
             Glide.with(mContext)
                     .load(mStoriesList.get(position).getMedia())
-                    .into(mImageView);
+                    .into(imageView);
 
             //load description text
-            if (mStoriesList.get(position).getDescription().equals("")) {
+            if (mStoriesList.get(position).getDescription().equals(""))
                 line.setVisibility(View.INVISIBLE);
-                mImageTextView.setVisibility(View.INVISIBLE);
-            } else {
-                mImageTextView.setText(mStoriesList.get(position).getDescription());
-            }
+            else
+                imageTextView.setText(mStoriesList.get(position).getDescription());
 
 
         } else if (mStoriesList.get(position).getType().equals("video")) {
-            mView = mLayoutInflater.inflate(R.layout.video_story_slide_layout, container, false);
+            mView = layoutInflater.inflate(R.layout.video_story_slide_layout, container, false);
             container.addView(mView);
 
             mVideoView = mView.findViewById(R.id.videoView);
-            mVideoTextView = mView.findViewById(R.id.imageDescription);
+            TextView mVideoTextView = mView.findViewById(R.id.videoDescription);
             View line = mView.findViewById(R.id.view);
 
             //load video on videoView
@@ -141,18 +139,17 @@ public class StoriesSliderAdapter extends PagerAdapter {
             mVideoView.start();
 
             //load description text
-            if (mStoriesList.get(position).getDescription().equals("")) {
+            if (mStoriesList.get(position).getDescription().equals(""))
                 line.setVisibility(View.INVISIBLE);
-                mVideoTextView.setVisibility(View.INVISIBLE);
-            } else {
+            else
                 mVideoTextView.setText(mStoriesList.get(position).getDescription());
-            }
+
 
             //set on Touch listener onRelease it plays onTouch it pauses
             mVideoView.setOnTouchListener(new View.OnTouchListener() {
                 @Override
                 public boolean onTouch(View v, MotionEvent event) {
-                    Boolean result = false;
+                    boolean result = false;
                     switch (event.getAction()) {
                         case MotionEvent.ACTION_DOWN:
                             //play video
@@ -183,13 +180,18 @@ public class StoriesSliderAdapter extends PagerAdapter {
     private void mediaPlay() {
         mContext.registerReceiver(mAudioBecomingNoisy, mNoisyIntentFilter);
         int requestAudioFocusResult = mAudioManager.requestAudioFocus(mOnAudioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
-        if (requestAudioFocusResult == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+        if (requestAudioFocusResult == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
             mVideoView.start();
-        }
+    }
+
+    //progress of downloading status video
+    @Override
+    public void onCacheAvailable(File cacheFile, String url, int percentsAvailable) {
+        Toast.makeText(mContext, "Percentage Video Downloaded : " + percentsAvailable + "%", Toast.LENGTH_SHORT).show();
     }
 
     @Override
-    public void destroyItem(ViewGroup container, int position, Object object) {
+    public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
         container.removeView((View) object);
     }
 

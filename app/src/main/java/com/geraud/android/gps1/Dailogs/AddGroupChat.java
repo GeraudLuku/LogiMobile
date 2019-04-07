@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatDialogFragment;
 import android.text.TextUtils;
@@ -19,6 +20,8 @@ import com.geraud.android.gps1.R;
 import com.theartofdev.edmodo.cropper.CropImage;
 import com.theartofdev.edmodo.cropper.CropImageView;
 
+import java.util.Objects;
+
 import es.dmoral.toasty.Toasty;
 
 import static android.app.Activity.RESULT_OK;
@@ -31,12 +34,13 @@ public class AddGroupChat extends AppCompatDialogFragment {
 
     private AddGroupChatListener mAddGroupChatListener;
 
+    @NonNull
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        AlertDialog.Builder builder = new AlertDialog.Builder(Objects.requireNonNull(getContext()));
 
-        LayoutInflater inflater = getActivity().getLayoutInflater();
-        View view = inflater.inflate(R.layout.create_group_chat, null);
+        LayoutInflater inflater = Objects.requireNonNull(getActivity()).getLayoutInflater();
+        View view = inflater.inflate(R.layout.create_group_chat, null,false);
 
         //initialise the views
         mName = view.findViewById(R.id.name);
@@ -51,7 +55,7 @@ public class AddGroupChat extends AppCompatDialogFragment {
                         .setGuidelines(CropImageView.Guidelines.ON)
                         .setMinCropResultSize(250, 250)
                         .setAspectRatio(1, 1)
-                        .start(getActivity());
+                        .start(Objects.requireNonNull(getActivity()));
             }
         });
 
@@ -92,7 +96,7 @@ public class AddGroupChat extends AppCompatDialogFragment {
                 mImageUri = result.getUri();
                 mImage.setImageURI(mImageUri);
             } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
-                Toasty.error(getActivity(), result.getError().toString(), 2000, true).show();
+                Toast.makeText(getContext(),"Error in Crop Image Intent",Toast.LENGTH_SHORT).show();
             }
         }
     }

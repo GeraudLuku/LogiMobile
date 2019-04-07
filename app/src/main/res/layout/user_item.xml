@@ -5,6 +5,7 @@
     android:id="@+id/friend_container"
     android:layout_width="match_parent"
     android:clickable="true"
+    android:focusable="true"
     android:layout_height="wrap_content"
     android:layout_margin="10dp"
     android:padding="5dp">
@@ -40,7 +41,7 @@
         android:layout_marginStart="28dp"
         android:layout_marginTop="8dp"
         android:textColor="@color/gray"
-        android:textSize="11sp"
+        android:textSize="12sp"
         app:layout_constraintStart_toEndOf="@+id/friend_image"
         app:layout_constraintTop_toBottomOf="@+id/friend_name"
         tools:text="+237674753811" />

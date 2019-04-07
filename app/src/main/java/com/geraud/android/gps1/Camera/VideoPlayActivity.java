@@ -1,13 +1,16 @@
 package com.geraud.android.gps1.Camera;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.support.annotation.NonNull;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.MotionEvent;
@@ -32,13 +35,17 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
+import java.util.Objects;
+
 public class VideoPlayActivity extends AppCompatActivity implements
         SurfaceHolder.Callback,
         AudioManager.OnAudioFocusChangeListener {
+    public static final String URI_EXTRA = "uri";
+    public static final String TEXT_EXTRA = "text";
 
     private MediaPlayer mMediaPlayer;
-    private Uri mVideoUri;
     private SurfaceView mSurfaceView;
+
     private AudioManager mAudioManager;
     private IntentFilter mNoisyIntentFilter;
     private AudioBecomingNoisy mAudioBecomingNoisy;
@@ -47,46 +54,39 @@ public class VideoPlayActivity extends AppCompatActivity implements
     private StorageReference mStorageReference;
 
     private EditText mDescriptionEditText;
-    private Button mPostButton;
+    private String mDescription;
+    private Uri mVideoUri;
+    private String mUserPhone;
 
-
-    private boolean location = true;
+    private boolean location = false;
     private double mLatitude = 0;
     private double mLongitude = 0;
 
-    private String mDescription;
 
     private class AudioBecomingNoisy extends BroadcastReceiver {
-
         @Override
         public void onReceive(Context context, Intent intent) {
             mediaPause();
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video_play);
 
-        mDescriptionEditText = findViewById(R.id.descriptionEditText);
-        mPostButton = findViewById(R.id.postButton);
-        mPostButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (getIntent().getExtras() != null) {
-                    Intent transferIntent = new Intent(getApplicationContext(), TransferActivity.class);
-                    transferIntent.putExtra("uri", mVideoUri);
-                    transferIntent.putExtra("text", mDescriptionEditText.getText().toString() == null ? " " : mDescriptionEditText.getText().toString());
-                    startActivity(transferIntent);
-                    finish();
-                } else
-                    postStatus();
-            }
-        });
+        Intent callingIntent = this.getIntent();
+        if (callingIntent != null) {
+            mVideoUri = callingIntent.getData();
+        }
 
-        mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORIES").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
-        mStorageReference = FirebaseStorage.getInstance().getReference().child("STORIES").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
+        mDescriptionEditText = findViewById(R.id.descriptionEditText);
+        mUserPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Cant Be Null").getPhoneNumber();
+        if (mUserPhone != null) {
+            mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORIES").child(mUserPhone);
+            mStorageReference = FirebaseStorage.getInstance().getReference().child("STORIES").child(mUserPhone);
+        }
 
         mSurfaceView = findViewById(R.id.videoSurfaceView);
         mSurfaceView.setOnTouchListener(new View.OnTouchListener() {
@@ -95,12 +95,9 @@ public class VideoPlayActivity extends AppCompatActivity implements
 
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        //play video
                         mediaPlay();
                         break;
-
                     case MotionEvent.ACTION_UP:
-                        // pause video
                         mediaPause();
                         break;
                 }
@@ -108,13 +105,63 @@ public class VideoPlayActivity extends AppCompatActivity implements
             }
         });
 
-        Intent callingIntent = this.getIntent();
-        if (callingIntent != null) {
-            mVideoUri = callingIntent.getData();
-        }
+        Button postbutton = findViewById(R.id.postButton);
+        postbutton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (getIntent().getExtras() != null) {
+                    Intent transferIntent = new Intent(getApplicationContext(), TransferActivity.class);
+                    transferIntent.putExtra(URI_EXTRA, mVideoUri);
+                    transferIntent.putExtra(TEXT_EXTRA, mDescriptionEditText.getText().toString());
+                    startActivity(transferIntent);
+                    finish();
+                } else
+                    new AlertDialog.Builder(getApplicationContext())
+                            .setMessage("Share Location Of Of This Activity?")
+                            .setPositiveButton("Share", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    location = true;
+                                }
+                            })
+                            .setNegativeButton("No, Please", null)
+                            .show();
+                postStatus();
+            }
+        });
+
         mAudioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
         mAudioBecomingNoisy = new AudioBecomingNoisy();
         mNoisyIntentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+    }
+
+    private void postStatus() {
+        mDescription = mDescriptionEditText.getText().toString();
+        //even if location was allowed by user, if there is no LatLng available then set location to false
+        if (mLatitude == 0 && mLongitude == 0)
+            location = false;
+
+        StorageReference filepath = mStorageReference.child(RandomStringGenerator.randomString() + ".jpg");
+        UploadTask uploadTask = filepath.putFile(mVideoUri);
+        uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+            @Override
+            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                String downloadUrl = Objects.requireNonNull(taskSnapshot.getDownloadUrl(), "Download Url Can't Be Null").toString();
+                Stories stories = new Stories(location, downloadUrl,
+                        mDescription, System.currentTimeMillis(), mLatitude, mLongitude, "video",
+                        mUserPhone);
+                mDatabaseReference.push().setValue(stories).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            Toast.makeText(getApplicationContext(), "Successfully created story", Toast.LENGTH_SHORT).show();
+                            finish();
+                        } else
+                            Toast.makeText(getApplicationContext(), "Couldn't create story", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
     }
 
     @Override
@@ -159,8 +206,10 @@ public class VideoPlayActivity extends AppCompatActivity implements
     private MediaPlayer.OnCompletionListener mMediaPlayerOnCompleteListener = new MediaPlayer.OnCompletionListener() {
         @Override
         public void onCompletion(MediaPlayer mp) {
-            // video was played till the end
-            mediaPause();
+            // video was played till the end have to revise this function
+            mp.reset();
+            mediaPlay();
+
         }
     };
 
@@ -212,34 +261,4 @@ public class VideoPlayActivity extends AppCompatActivity implements
         }
     }
 
-    private void postStatus() {
-
-        mDescription = mDescriptionEditText.getText().toString() == null ? " " : mDescriptionEditText.getText().toString();
-
-        if (mLatitude == 0 && mLongitude == 0)
-            location = false;
-
-        StorageReference filepath = mStorageReference.child(RandomStringGenerator.randomString() + ".jpg");
-        UploadTask uploadTask = filepath.putFile(mVideoUri);
-        uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-            @Override
-            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-
-                Stories stories = new Stories(location, taskSnapshot.getDownloadUrl().toString(),
-                        mDescription, System.currentTimeMillis(), mLatitude, mLongitude, "video",
-                        FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
-
-                mDatabaseReference.push().setValue(stories).addOnCompleteListener(new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        if (task.isSuccessful()) {
-                            Toast.makeText(getApplicationContext(), "Successfully created story", Toast.LENGTH_SHORT).show();
-                            finish();
-                        } else
-                            Toast.makeText(getApplicationContext(), "Couldn't create story", Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        });
-    }
 }

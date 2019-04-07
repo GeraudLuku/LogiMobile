@@ -37,22 +37,25 @@
 
     <EditText
         android:id="@+id/name"
-        android:layout_width="200dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp"
-        android:layout_marginBottom="216dp"
+        android:layout_marginBottom="108dp"
         android:layout_weight="1"
         android:background="@drawable/edittext"
         android:ellipsize="end"
         android:hint="@string/enter_name"
+        android:importantForAutofill="no"
+        android:inputType="text"
         android:lines="1"
         android:padding="15dp"
         android:scrollHorizontally="true"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/progress_bar"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.497"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:targetApi="o" />
 
     <Button
         android:id="@+id/submit"
@@ -63,6 +66,8 @@
         android:layout_marginBottom="108dp"
         android:background="@drawable/button"
         android:text="@string/go"
+        android:drawableEnd="@drawable/arrow"
+        android:drawablePadding="5dp"
         android:textColor="@color/colorAccent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

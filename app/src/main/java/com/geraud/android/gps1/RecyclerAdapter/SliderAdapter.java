@@ -1,23 +1,26 @@
 package com.geraud.android.gps1.RecyclerAdapter;
 
 import android.content.Context;
+import android.support.annotation.NonNull;
 import android.support.v4.view.PagerAdapter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.geraud.android.gps1.R;
 
 /**
- * Created by Elia on 12/4/2017.
+ * Created by Geraud on 12/6/2018.
  */
 
 public class SliderAdapter extends PagerAdapter {
     private Context mContext;
-    private LayoutInflater mLayoutInflater;
+
+    public SliderAdapter(Context context) {
+        mContext = context;
+    }
 
     private int[] slideImages = {
             R.drawable.locations1,
@@ -34,16 +37,12 @@ public class SliderAdapter extends PagerAdapter {
             "Discover & Add Locations"
     };
     private String[] descriptions = {
-            "Get access to real time location of all mContactList and also locations of areas around you",
-            "Send messages to your contacts using our well optimised cloud messaging systems",
+            "Get access to real-time location of all available friends and also locations of areas around you",
+            "Send messages to your friends using our well optimised cloud messaging system",
             "We got your back on the moments you will like to disappear from the radar",
             "The maps contrast automatically adapts to your environment to improve your vision",
-            "Don't just watch default locations you can create custom locations on the map and share with your mContactList"
+            "Don't just watch default locations you can create custom locations on the map and share with your friends"
     };
-
-    public SliderAdapter(Context context) {
-        this.mContext = context;
-    }
 
     @Override
     public int getCount() {
@@ -51,13 +50,14 @@ public class SliderAdapter extends PagerAdapter {
     }
 
     @Override
-    public boolean isViewFromObject(View view, Object object) {
-        return view == (RelativeLayout) object;
+    public boolean isViewFromObject(@NonNull View view, @NonNull Object object) {
+        return view == object;
     }
 
     @Override
-    public Object instantiateItem(ViewGroup container, int position) {
-        mLayoutInflater = (LayoutInflater) mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+    @NonNull
+    public Object instantiateItem(@NonNull ViewGroup container, int position) {
+        LayoutInflater mLayoutInflater = (LayoutInflater) mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 
         View v = mLayoutInflater.inflate(R.layout.slide_layout, container, false);
 
@@ -76,7 +76,7 @@ public class SliderAdapter extends PagerAdapter {
     }
 
     @Override
-    public void destroyItem(ViewGroup container, int position, Object object) {
+    public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
         container.removeView((View) object);
     }
 }

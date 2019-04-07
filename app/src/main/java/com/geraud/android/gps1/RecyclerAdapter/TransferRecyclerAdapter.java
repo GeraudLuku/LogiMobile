@@ -35,7 +35,7 @@ public class TransferRecyclerAdapter extends RecyclerView.Adapter<TransferRecycl
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, final int position) {
+    public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
 
         holder.mContactName.setText(mUserList.get(position).getName());
         Glide.with(mContext).load(mUserList.get(position).getImage_uri())
@@ -45,7 +45,7 @@ public class TransferRecyclerAdapter extends RecyclerView.Adapter<TransferRecycl
         holder.mIsSelected.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                mUserList.get(position).setSelected(isChecked);
+                mUserList.get(holder.getAdapterPosition()).setSelected(isChecked);
             }
         });
     }

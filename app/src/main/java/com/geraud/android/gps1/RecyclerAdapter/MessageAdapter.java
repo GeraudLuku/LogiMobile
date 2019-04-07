@@ -16,16 +16,14 @@ import com.bumptech.glide.Glide;
 import com.geraud.android.gps1.Models.Message;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.Utils.TimeAgo;
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import com.stfalcon.frescoimageviewer.ImageViewer;
 
-import java.net.URI;
 import java.util.List;
+import java.util.Objects;
 
 public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageViewHolder> {
 
@@ -35,16 +33,16 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
 
     private List<Message> mMessageList;
     private Context mContext;
+    private String mUserPhone;
 
     private View mLayoutView;
-    private RecyclerView.LayoutParams mLayoutParams;
 
-    private String mPhoneNumber = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber();
     private DatabaseReference mUserDatabase = FirebaseDatabase.getInstance().getReference().child("USER");
 
-    public MessageAdapter(List<Message> Message, Context context) {
-        this.mMessageList = Message;
-        this.mContext = context;
+    public MessageAdapter(List<Message> Message, Context context, String userPhone) {
+        mMessageList = Message;
+        mContext = context;
+        mUserPhone = userPhone;
     }
 
     @NonNull
@@ -52,47 +50,46 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     public MessageViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int viewType) {
         switch (viewType) {
             case GROUP_CHAT_MESSAGE:
-                mLayoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.group_message, null, false);
-                mLayoutParams = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                mLayoutView.setLayoutParams(mLayoutParams);
+                mLayoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.group_message, viewGroup, false);
+                RecyclerView.LayoutParams layoutParams = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                mLayoutView.setLayoutParams(layoutParams);
                 break;
             case SINGLE_CHAT_MESSAGE:
-                mLayoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.chat_message, null, false);
-                mLayoutParams = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                mLayoutView.setLayoutParams(mLayoutParams);
+                mLayoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.chat_message, viewGroup, false);
+                layoutParams = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                mLayoutView.setLayoutParams(layoutParams);
                 break;
             case MY_MESSAGE:
-                mLayoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.my_message, null, false);
-                mLayoutParams = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                mLayoutView.setLayoutParams(mLayoutParams);
+                mLayoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.my_message, viewGroup, false);
+                layoutParams = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                mLayoutView.setLayoutParams(layoutParams);
                 break;
             default:
-                Toast.makeText(mContext, "Couldn't find any view type for the received message", Toast.LENGTH_SHORT).show();
+                Toast.makeText(mContext, "Couldn't find any view type for the message", Toast.LENGTH_SHORT).show();
         }
 
-        MessageViewHolder rcv = new MessageViewHolder(mLayoutView);
-        return rcv;
+        return new MessageViewHolder(mLayoutView);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull final MessageViewHolder holder, final int position) {
+    public void onBindViewHolder(@NonNull final MessageViewHolder holder, int position) {
 
         holder.mMessage.setText(mMessageList.get(position).getText());
 
-        mUserDatabase.child(mMessageList.get(position).getSenderId()).addListenerForSingleValueEvent(new ValueEventListener() {
+        //set name and image
+        mUserDatabase.child(mMessageList.get(position).getSenderId()).child("userInfo").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists())
-                    for (DataSnapshot childsnapshot : dataSnapshot.getChildren())
-                        if (childsnapshot.child("name").getValue() != null && childsnapshot.child("image_uri").getValue() != null) {
-                            holder.mSenderName.setText(childsnapshot.child("name").getValue().toString());
-                            Glide.with(mContext).load(Uri.parse(childsnapshot.child("image_uri").getValue().toString())).into(holder.mImageView);
+                        if (dataSnapshot.child("name").getValue() != null && dataSnapshot.child("image_uri").getValue() != null) {
+                            holder.mSenderName.setText(Objects.requireNonNull(dataSnapshot.child("name").getValue()).toString());
+                            Glide.with(mContext).load(Uri.parse(Objects.requireNonNull(dataSnapshot.child("image_uri").getValue()).toString())).into(holder.mImageView);
                         }
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                Toast.makeText(mContext, "set name and image of user ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -104,11 +101,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         holder.mViewMedia.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //show media files with FRESCO
-                new ImageViewer.Builder(mContext, mMessageList.get(holder.getAdapterPosition()).getMediaUrlist())
-                        .allowSwipeToDismiss(true)
-                        .setStartPosition(0)
-                        .show();
+               // ToDo : Find A Way To Distinguish between video and image uri and view dem accordingly
             }
         });
 
@@ -120,13 +113,13 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
         return mMessageList.size();
     }
 
-    public class MessageViewHolder extends RecyclerView.ViewHolder {
+     class MessageViewHolder extends RecyclerView.ViewHolder {
         private TextView mMessage,
                 mSenderName, mTimeStamp;
         private Button mViewMedia;
         private ImageView mImageView;
 
-        public MessageViewHolder(View view) {
+         MessageViewHolder(View view) {
             super(view);
 
             mMessage = view.findViewById(R.id.message);
@@ -142,13 +135,13 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.MessageV
     public int getItemViewType(int position) {
 
         if (mMessageList.get(position).mChatType.equals("group")) {
-            if (mMessageList.get(position).getSenderId() == mPhoneNumber) {
+            if (mMessageList.get(position).getSenderId().equals(mUserPhone)) {
                 return MY_MESSAGE;
             } else {
                 return GROUP_CHAT_MESSAGE;
             }
         } else if (mMessageList.get(position).mChatType.equals("single")) {
-            if (mMessageList.get(position).getSenderId() == mPhoneNumber) {
+            if (mMessageList.get(position).getSenderId().equals(mUserPhone)) {
                 return MY_MESSAGE;
             } else {
                 return SINGLE_CHAT_MESSAGE;

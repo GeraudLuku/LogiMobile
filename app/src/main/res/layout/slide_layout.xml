@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/colorAccent"
+    android:background="@color/_light_green"
     xmlns:tools="http://schemas.android.com/tools">
 
     <de.hdodenhof.circleimageview.CircleImageView
@@ -12,7 +12,7 @@
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="54dp"
-        tools:src="@drawable/logi_logo" />
+        tools:src="@drawable/test_image" />
 
     <TextView
         android:id="@+id/top"
@@ -38,7 +38,7 @@
         android:layout_margin="10dp"
         android:padding="25dp"
         tools:text="Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolorem velit ex minus molestias, nisi rem tenetur at reiciendis, natus aut earum ipsum molestiae repudiandae illum quasi aspernatur magnam eligendi! Earum?"
-        android:textColor="@color/black"
+        android:textColor="@color/white"
         android:textStyle="italic"
-        android:textSize="17sp" />
+        android:textSize="19sp" />
 </RelativeLayout>

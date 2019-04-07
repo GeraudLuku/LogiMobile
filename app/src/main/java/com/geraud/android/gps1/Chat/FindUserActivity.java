@@ -33,29 +33,27 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 
 public class FindUserActivity extends AppCompatActivity implements AddGroupChat.AddGroupChatListener {
     private static final int REQUEST_CODE = 1;
 
-    private RecyclerView mUserListRecyclerView;
     private RecyclerView.Adapter mUserListAdapter;
-    private RecyclerView.LayoutManager mUserListLayoutManager;
 
     private DatabaseReference mChatInfoDB;
     private DatabaseReference mUserDB;
 
-    private HashMap mNewChatMap = new HashMap();
-    private HashMap<String, String> mGroupChatMap = new HashMap<>();
-    private HashMap<String, String> mMyChatMap = new HashMap<>();
-    private HashMap<String, String> mSingleChatMap = new HashMap<>();
+    private HashMap<String,Object> mNewChatMap;
+    private HashMap<String, String> mGroupChatMap;
+    private HashMap<String, String> mMyChatMap;
+    private HashMap<String, String> mSingleChatMap;
 
 
     private String key;
-    private String mChatId;
+    private String mUserPhone;
 
     private List<User> mUserList;
     private List<Chat> mChatList;
@@ -73,6 +71,13 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
         mChatList = new ArrayList<>();
         mChatInfo = new ArrayList<>();
         mUserList = new ArrayList<>();
+
+        mNewChatMap = new HashMap<>();
+        mGroupChatMap = new HashMap<>();
+        mMyChatMap = new HashMap<>();
+        mSingleChatMap = new HashMap<>();
+
+        mUserPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Cant Be Null").getPhoneNumber();
 
         ImageButton createChatBtn = toolbar.findViewById(R.id.createChat);
         createChatBtn.setOnClickListener(new View.OnClickListener() {
@@ -94,18 +99,18 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
     }
 
     private void initializeRecyclerView() {
-        mUserListRecyclerView = findViewById(R.id.userList);
-        mUserListRecyclerView.setNestedScrollingEnabled(false); //make recycler view scroll seamlessly
-        mUserListRecyclerView.setHasFixedSize(false);// out of preferrence
-        mUserListRecyclerView.addItemDecoration(new DividerItemDecoration(mUserListRecyclerView.getContext(), DividerItemDecoration.VERTICAL)); // list divider
-        mUserListLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false);
-        mUserListRecyclerView.setLayoutManager(mUserListLayoutManager);
+        RecyclerView userListRecyclerView = findViewById(R.id.userList);
+        userListRecyclerView.setNestedScrollingEnabled(false); //make recycler view scroll seamlessly
+        userListRecyclerView.setHasFixedSize(false);// out of preferrence
+        userListRecyclerView.addItemDecoration(new DividerItemDecoration(userListRecyclerView.getContext(), DividerItemDecoration.VERTICAL)); // list divider
+        RecyclerView.LayoutManager userListLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false);
+        userListRecyclerView.setLayoutManager(userListLayoutManager);
         mUserListAdapter = new UserListAdapter(mUserList, this);
-        mUserListRecyclerView.setAdapter(mUserListAdapter);
+        userListRecyclerView.setAdapter(mUserListAdapter);
     }
 
     private void getUserDetails(String contact) {
-        DatabaseReference mUserDB = FirebaseDatabase.getInstance().getReference().child("USER");
+        DatabaseReference mUserDB = FirebaseDatabase.getInstance().getReference().child("USER").child("userInfo");
         Query query = mUserDB.orderByChild("phone").equalTo(contact);
         query.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -121,13 +126,12 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                Toast.makeText(FindUserActivity.this, "getUserDetails ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void createChat() {
-
         key = FirebaseDatabase.getInstance().getReference().child("CHAT").push().getKey();
 
         mUserDB = FirebaseDatabase.getInstance().getReference().child("USER");
@@ -138,14 +142,14 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
 
         mNewChatMap.put("id", key);
         mNewChatMap.put("lastMessage/", message);
-        mNewChatMap.put("users/" + FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber(), true);
+        mNewChatMap.put("users/" + mUserPhone, true);
 
         mMyChatMap.put("type", "single");
 
         mGroupChatMap.put("type", "group");
 
         mSingleChatMap.put("type", "single");
-        mSingleChatMap.put("user", FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
+        mSingleChatMap.put("user", mUserPhone);
 
         boolean validChat = false;
         int count = 0; //number of users selected
@@ -174,8 +178,9 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
                     public void onDataChange(DataSnapshot dataSnapshot) {
                         if (dataSnapshot.exists()) {
                             //if the chat already exists, open the chat in chat activity
-                            mChatId = dataSnapshot.getKey();
-                            getChatData(mChatId);
+                            Chat chat = new Chat(dataSnapshot.getKey());
+                            mChatList.add(chat);
+                            getChatData(chat.getChatId());
                         } else {
                             //if it doesn't exist create a new chat then......
                             mNewChatMap.put("name", null);
@@ -183,17 +188,19 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
                             mNewChatMap.put("image", null);
 
                             mChatInfoDB.updateChildren(mNewChatMap);
-                            mUserDB.child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("chat").child(key).setValue(mMyChatMap); //chat id set in my Document
-                            mUserDB.child(mMyChatMap.get("user")).child("chat").child(key).setValue(mSingleChatMap); // set chat id in the other users document
+                            mUserDB.child(mUserPhone).child("chat").child(key).setValue(mMyChatMap); //chat id set in my Document
+                            mUserDB.child(Objects.requireNonNull(mMyChatMap.get("user"),"myChatMap user can't be NUll")).child("chat").child(key).setValue(mSingleChatMap); // set chat id in the other users document
 
                             //open chatActivity for this newly created chat
-                            getChatData(key);
+                            Chat chat = new Chat(key);
+                            mChatList.add(chat);
+                            getChatData(chat.getChatId());
                         }
                     }
 
                     @Override
                     public void onCancelled(DatabaseError databaseError) {
-
+                        Toast.makeText(getApplicationContext(), "reference ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
                     }
                 });
 
@@ -206,7 +213,7 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
     //open add place dailog
     public void CreateGroupChat() {
         AddGroupChat groupChat = new AddGroupChat();
-        groupChat.show(getSupportFragmentManager(), "Add Group Chat");
+        groupChat.show(getSupportFragmentManager(), "Create Group Chat");
     }
 
     @Override
@@ -217,10 +224,12 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
         mNewChatMap.put("image", image_uri);
 
         mChatInfoDB.updateChildren(mNewChatMap);
-        mUserDB.child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("chat").child(key).setValue(mGroupChatMap);
+        mUserDB.child(mUserPhone).child("chat").child(key).setValue(mGroupChatMap);
 
         //open activity for this chat
-        getChatData(key);
+        Chat chat = new Chat(key);
+        mChatList.add(chat);
+        getChatData(chat.getChatId());
     }
 
     // this is where you will get the info of all the chats including the designator , last message and timestamp
@@ -230,11 +239,13 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
+                    ChatInfo chatInfo = dataSnapshot.getValue(ChatInfo.class);
+                    mChatInfo.add(chatInfo);
                     String chatId = "";
 
                     //getting id of the chat
                     if (dataSnapshot.child("id").getValue() != null)
-                        chatId = dataSnapshot.child("id").getValue().toString();
+                        chatId = Objects.requireNonNull(dataSnapshot.child("id").getValue(),"id can't be null").toString();
 
                     //getting all users
                     for (DataSnapshot userSnaphshot : dataSnapshot.child("users").getChildren())
@@ -242,7 +253,7 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
                             if (mChat.getChatId().equals(chatId)) {
                                 User mUser = new User(userSnaphshot.getKey());
                                 mChat.addUserToArrayList(mUser);
-                                getUserData(mUser, chatId);
+                                getUserData(mUser);
                             }
                         }
                 }
@@ -250,13 +261,13 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                Toast.makeText(FindUserActivity.this, "getChatData ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
 
     }
 
-    private void getUserData(User mUser, final String chatId) {
+    private void getUserData(User mUser) {
         DatabaseReference mUserDb = FirebaseDatabase.getInstance().getReference().child("USER").child(mUser.getPhone());
         mUserDb.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -264,7 +275,7 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
                 User mUser = new User(dataSnapshot.getKey());
                 //getting notification key
                 if (dataSnapshot.child("notificationKey").getValue() != null)
-                    mUser.setNotificationKey(dataSnapshot.child("notificationKey").getValue().toString());
+                    mUser.setNotificationKey(Objects.requireNonNull(dataSnapshot.child("notificationKey").getValue(),"NotificationKey Can't be null").toString());
 
                 for (Chat mChat : mChatList) {
                     for (User mUserIt : mChat.getUserObjectArrayList()) {
@@ -273,43 +284,21 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
                         }
                     }
                 }
-                //to put in the chatInfo object
-                getChatMetaData(chatId);
+                // create intent here and send extras (mChatinfo,mChatList)
+                Intent intent = new Intent(getApplicationContext(), ChatActivity.class);
+                intent.putExtra("chatObject", mChatList.get(0));  // get the first document i the list because there is only one document
+                intent.putExtra("chatInfoObject", mChatInfo.get(0));
+                startActivity(intent);
+                finish();
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
+                Toast.makeText(FindUserActivity.this, "getUserData ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void getChatMetaData(String chatId) {
-        DatabaseReference mChatInfoDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(chatId).child("info");
-        mChatInfoDB.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                        ChatInfo chatInfo = dc.getValue(ChatInfo.class);
-                        mChatInfo.add(chatInfo);
-                    }
-                    // create intent here and send extras (mChatinfo,mChatList)
-                    Intent intent = new Intent(getApplicationContext(), ChatActivity.class);
-                    intent.putExtra("chatObject", mChatList.get(0));  // get the first document i the list because there is only one document
-                    intent.putExtra("chatInfoObject", mChatInfo.get(0));
-                    startActivity(intent);
-                    finish();
-                }
-
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-
-    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {

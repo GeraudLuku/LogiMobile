@@ -6,8 +6,6 @@
     <string name="navigation_drawer_close">Close navigation drawer</string>
 
     <string name="action_settings">Settings</string>
-
-    <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="title_activity_maps">Map</string>
     <string name="please_provide_your_name_and_profile_photo">Please provide your name and profile photo</string>
@@ -46,24 +44,34 @@
     <string name="options_icon">options icon</string>
     <string name="chat">Chat</string>
     <string name="go_to">GO-TO</string>
-    <string name="go_to">GO-TO</string>
     <string name="view">View</string>
     <string name="my_places">My Places</string>
     <string name="friends_places">Friends Places</string>
     <string name="l">L</string>
     <string name="p">P</string>
     <string name="chat_image_button">chat image button</string>
-    <string name="chats">Chats</string>
     <string name="place_image_button_view">place image button view</string>
     <string name="places">Places</string>
-    <string name="hide_location">Hide Location</string>
-    <string name="hide_geofences">Hide Geofences</string>
-    <string name="conection_status_icon">conection status icon</string>
+    <string name="conection_status_icon">connection status icon</string>
     <string name="button_to_open_settings_of_user_information">button to open settings of user information</string>
     <string name="pinki_pie">Pinki Pie</string>
     <string name="change_image_of_user">change image of user</string>
     <string name="x">X</string>
     <string name="update">Update</string>
+    <string name="log_out">LogOut</string>
+    <string name="next">Next</string>
+    <string name="back">Back</string>
+    <string name="finish">Finish</string>
+    <string name="activities">Activities</string>
+    <string name="user_status_images">user status images</string>
+    <string name="to">TODO</string>
+    <string name="status_image_view">status image view</string>
+    <string name="gallery_imageview">gallery imageview</string>
+    <string name="picture">Picture</string>
+    <string name="rose">Rose</string>
+    <string name="contacts">Contacts</string>
+    <string name="name">Name</string>
+    <string name="send_to">Send To ..</string>
 
     <string-array name="places_types">
         <item>What Type Of pLace is it?</item>

@@ -30,8 +30,9 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/layoutBars"
         android:layout_marginStart="13dp"
-        android:layout_marginTop="13dp"
+        android:layout_marginTop="27dp"
         android:layout_toEndOf="@+id/userImage"
+        android:textColor="@color/black"
         tools:text="Geraud Luku" />
 
     <TextView
@@ -53,7 +54,8 @@
         android:layout_marginTop="17dp"
         android:layout_marginEnd="13dp"
         android:background="@android:color/transparent"
-        android:src="@drawable/story_location" />
+        android:src="@drawable/story_location"
+        android:contentDescription="@string/to" />
 
     <ImageButton
         android:id="@+id/chatButton"
@@ -64,6 +66,7 @@
         android:layout_marginTop="17dp"
         android:layout_marginEnd="57dp"
         android:background="@android:color/transparent"
+        android:contentDescription="@string/to"
         android:src="@drawable/story_chat" />
 
 

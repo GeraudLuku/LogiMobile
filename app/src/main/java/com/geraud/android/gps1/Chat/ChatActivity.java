@@ -1,11 +1,17 @@
 package com.geraud.android.gps1.Chat;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
@@ -50,12 +56,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class ChatActivity extends BaseActivity {
+    private static final int CAMERA_REQUEST = 0;
+    private static final int CAMERA_PERMISSION_REQUEST = 2;
 
-    private RecyclerView mChatRecyclerView, mMediaRecyclerView;
     private RecyclerView.Adapter mMessageAdapter, mMediaAdapter;
-    private RecyclerView.LayoutManager mChatLayoutManager, mMediaLayoutManager;
+    private RecyclerView.LayoutManager mChatLayoutManager;
 
     private Chat mChatObject;
     private ChatInfo mChatInfoObject;
@@ -63,10 +71,8 @@ public class ChatActivity extends BaseActivity {
     private DatabaseReference mChatMessagesDb,
             mChatInfoDb;
 
-    private ImageView mMapLocation, mCall, mImage;
-    private TextView mName;
-
     private User mUserInfo;
+    private String mUserPhone;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,35 +82,35 @@ public class ChatActivity extends BaseActivity {
         // Find the toolbar view inside the activity layout
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setHomeButtonEnabled(true);
+        Objects.requireNonNull(getSupportActionBar(), "Tool Bar Can't Be Null").setHomeButtonEnabled(true);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-        mMapLocation = toolbar.findViewById(R.id.mapLocation);
-        mImage = toolbar.findViewById(R.id.image);
-        mCall = toolbar.findViewById(R.id.call);
-        mName = toolbar.findViewById(R.id.name);
-        mMessage = findViewById(R.id.message);
+        ImageView mapLocation = toolbar.findViewById(R.id.mapLocation);
+        ImageView image = toolbar.findViewById(R.id.image);
+        ImageView call = toolbar.findViewById(R.id.call);
+        TextView name = toolbar.findViewById(R.id.name);
 
+        mMessage = findViewById(R.id.message);
         mChatObject = (Chat) getIntent().getSerializableExtra("chatObject");
         mChatInfoObject = (ChatInfo) getIntent().getSerializableExtra("chatInfoObject");
 
-        if (mChatInfoObject.getType().equals("single")){
-            mMapLocation.setVisibility(View.VISIBLE);
-            mCall.setVisibility(View.VISIBLE);
+        if (mChatInfoObject.getType().equals("single")) {
+            mapLocation.setVisibility(View.VISIBLE);
+            call.setVisibility(View.VISIBLE);
         }
 
         //set name and image of chat
-        mName.setText(mChatInfoObject.getName());
-        Glide.with(getApplicationContext()).load(Uri.parse(mChatInfoObject.getImage())).into(mImage);
+        name.setText(mChatInfoObject.getName());
+        Glide.with(getApplicationContext()).load(Uri.parse(mChatInfoObject.getImage())).into(image);
 
         //call function and map function
-        mCall.setOnClickListener(new View.OnClickListener() {
+        call.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                    call(mChatInfoObject.getName());
+                call(mChatInfoObject.getName());
             }
         });
-        mMapLocation.setOnClickListener(new View.OnClickListener() {
+        mapLocation.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 showUserOnMap(mChatInfoObject.getName());
@@ -114,43 +120,82 @@ public class ChatActivity extends BaseActivity {
         mChatMessagesDb = FirebaseDatabase.getInstance().getReference().child("CHAT").child(mChatObject.getChatId()).child("messages");
         mChatInfoDb = FirebaseDatabase.getInstance().getReference().child("CHAT").child(mChatObject.getChatId()).child("info");
 
-        Button mSend = findViewById(R.id.send);
-        mSend.setOnClickListener(new View.OnClickListener() {
+        Button sendButton = findViewById(R.id.send);
+        sendButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 sendMessage();
             }
         });
 
-        Button mAddMedia = findViewById(R.id.addMedia);
-        mAddMedia.setOnClickListener(new View.OnClickListener() {
+        Button addMediaButton = findViewById(R.id.addMedia);
+        addMediaButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openGallery();
+                new AlertDialog.Builder(getApplicationContext())
+                        .setTitle("Get Media From?")
+                        .setItems(new CharSequence[]{"Gallery", "Camera"}, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                switch (which) {
+                                    case 0:
+                                        openGallery();
+                                        break;
+                                    case 1:
+                                        //create camera intent
+                                        checkCameraPermission();
+                                        break;
+                                }
+                            }
+                        })
+                        .show();
             }
         });
 
         //get current user Object
-        FirebaseDatabase.getInstance().getReference().child("USER").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).addListenerForSingleValueEvent(
-                new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        if (dataSnapshot.exists())
-                            for (DataSnapshot dc : dataSnapshot.getChildren())
-                                mUserInfo = dc.getValue(User.class);
-                        Toast.makeText(getApplicationContext(), "Current user info gotten sucessfully", Toast.LENGTH_SHORT).show();
-                    }
+        mUserPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Cant Be Null").getPhoneNumber();
+        if (mUserPhone != null) {
+            FirebaseDatabase.getInstance().getReference().child("USER").child(mUserPhone).child("userInfo").addListenerForSingleValueEvent(
+                    new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            if (dataSnapshot.exists())
+                                mUserInfo = dataSnapshot.getValue(User.class);
+                            Toast.makeText(getApplicationContext(), "Your Info Retrieved Successfully", Toast.LENGTH_SHORT).show();
+                        }
 
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+                            Toast.makeText(getApplicationContext(), "get current user Object ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
+                        }
                     }
-                }
-        );
+            );
+        }
 
         initializeMessage();
         initializeMedia();
         getChatMessages();
+    }
+
+    private void checkCameraPermission() {
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                    == PackageManager.PERMISSION_GRANTED) {
+                Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+                startActivityForResult(cameraIntent, CAMERA_REQUEST);
+            } else {
+                if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+                    Toast.makeText(this, "App Needs Camera permission", Toast.LENGTH_SHORT).show();
+                }
+                requestPermissions(new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION_REQUEST);
+            }
+
+        } else {
+            Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+            startActivityForResult(cameraIntent, CAMERA_REQUEST);
+        }
+
     }
 
     private void getChatMessages() {
@@ -158,20 +203,23 @@ public class ChatActivity extends BaseActivity {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                 if (dataSnapshot.exists()) {
-                    String text = "";
-                    String creatorID = "";
+                    String text = "",
+                            creatorID = "";
+                    long timestamp = 0;
                     ArrayList<String> mediaUrlList = new ArrayList<>();
 
                     if (dataSnapshot.child("text").getValue() != null)
-                        text = dataSnapshot.child("text").getValue().toString();
+                        text = Objects.requireNonNull(dataSnapshot.child("text").getValue(), "text Null").toString();
+                    if (dataSnapshot.child("timestamp").getValue() != null)
+                        timestamp = Long.parseLong(Objects.requireNonNull(dataSnapshot.child("timestamp").getValue(), "timestamp Null").toString());
                     if (dataSnapshot.child("creator").getValue() != null)
-                        creatorID = dataSnapshot.child("creator").getValue().toString();
+                        creatorID = Objects.requireNonNull(dataSnapshot.child("creator").getValue(), "creatorId Null").toString();
                     if (dataSnapshot.child("media").getChildrenCount() > 0)
                         for (DataSnapshot mediaSnapshot : dataSnapshot.child("media").getChildren())
-                            mediaUrlList.add(mediaSnapshot.getValue().toString());
+                            mediaUrlList.add(Objects.requireNonNull(mediaSnapshot.getValue(), "media Null").toString());
 
 
-                    Message mMessage = new Message(dataSnapshot.getKey(), text, creatorID, System.currentTimeMillis(), mediaUrlList).withType(mChatInfoObject.getType());
+                    Message mMessage = new Message(dataSnapshot.getKey(), text, creatorID, timestamp, mediaUrlList).withType(mChatInfoObject.getType());
                     mMessageList.add(mMessage);
                     mChatLayoutManager.scrollToPosition(mMessageList.size() - 1); //scroll to the last message automatically
                     mMessageAdapter.notifyDataSetChanged();
@@ -195,7 +243,7 @@ public class ChatActivity extends BaseActivity {
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                Toast.makeText(ChatActivity.this, "getChatMessages ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -205,23 +253,22 @@ public class ChatActivity extends BaseActivity {
     private EditText mMessage;
 
     private void sendMessage() {
-
         String messageId = mChatMessagesDb.push().getKey();
         final DatabaseReference newMessageDb = mChatMessagesDb.child(messageId);
 
-        final Map newMessageMap = new HashMap<>();
+        final Map<String, Object> newMessageMap = new HashMap<>();
 
         if (!mMessage.getText().toString().isEmpty())
             newMessageMap.put("text", mMessage.getText().toString());
 
-        newMessageMap.put("creator", FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
+        newMessageMap.put("creator", mUserPhone);
+        newMessageMap.put("timestamp", System.currentTimeMillis());
 
         if (!mMediaUriList.isEmpty()) {
             for (String mediaUri : mMediaUriList) {
                 String mediaId = newMessageDb.child("media").push().getKey();
                 mediaIdList.add(mediaId);
                 final StorageReference filepath = FirebaseStorage.getInstance().getReference().child("CHAT").child(mChatObject.getChatId()).child(messageId).child(mediaId);
-
                 UploadTask uploadTask = filepath.putFile(Uri.parse(mediaUri));
                 uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                     @Override
@@ -239,11 +286,11 @@ public class ChatActivity extends BaseActivity {
                     }
                 });
             }
-        } else if (!mMessage.getText().toString().isEmpty())
+        } else {
             newMessageMap.put("media", null);
-        updateDatabaseWithNewMessage(newMessageDb, newMessageMap);
-
-
+        }
+        if (!mMessage.getText().toString().isEmpty())
+            updateDatabaseWithNewMessage(newMessageDb, newMessageMap);
     }
 
     private void updateDatabaseWithNewMessage(DatabaseReference newMessageDb, Map newMessageMap) {
@@ -256,21 +303,21 @@ public class ChatActivity extends BaseActivity {
 
         String message;
         if (newMessageMap.get("text") != null) {
-            message = newMessageMap.get("text").toString();
+            message = Objects.requireNonNull(newMessageMap.get("text"),"message can't be null").toString();
         } else
             message = "Sent Media";
 
         for (User mUser : mChatObject.getUserObjectArrayList())
-            if (!mUser.getPhone().equals(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber())) {
-                if(mChatInfoObject.getType().equals("single")){
+            if (!mUser.getPhone().equals(mUserPhone)) {
+                if (mChatInfoObject.getType().equals("single")) {
                     new SendNotification(
                             message,
                             mUserInfo.getName(),
                             mUser.getNotificationKey()
                     );
-                }else if (mChatInfoObject.getType().equals("group")){
+                } else if (mChatInfoObject.getType().equals("group")) {
                     new SendNotification(
-                            String.format(" %s : %s ",mUserInfo.getName() , message),
+                            String.format(" %s : %s ", mUserInfo.getName(), message),
                             mChatInfoObject.getName(),
                             mUser.getNotificationKey()
                     );
@@ -285,12 +332,12 @@ public class ChatActivity extends BaseActivity {
 
     private void initializeMessage() {
         mMessageList = new ArrayList<>();
-        mChatRecyclerView = findViewById(R.id.messageList);
+        RecyclerView mChatRecyclerView = findViewById(R.id.messageList);
         mChatRecyclerView.setNestedScrollingEnabled(false);
         mChatRecyclerView.setHasFixedSize(false);
         mChatLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false);
         mChatRecyclerView.setLayoutManager(mChatLayoutManager);
-        mMessageAdapter = new MessageAdapter(mMessageList, this);
+        mMessageAdapter = new MessageAdapter(mMessageList, this, mUserPhone);
         mChatRecyclerView.setAdapter(mMessageAdapter);
     }
 
@@ -298,23 +345,22 @@ public class ChatActivity extends BaseActivity {
 
     private void initializeMedia() {
         mMediaUriList = new ArrayList<>();
-        mMediaRecyclerView = findViewById(R.id.mediaList);
+        RecyclerView mMediaRecyclerView = findViewById(R.id.mediaList);
         mMediaRecyclerView.setNestedScrollingEnabled(false);
         mMediaRecyclerView.setHasFixedSize(false);
-        mMediaLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.HORIZONTAL, false);
+        RecyclerView.LayoutManager mMediaLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.HORIZONTAL, false);
         mMediaRecyclerView.setLayoutManager(mMediaLayoutManager);
         mMediaAdapter = new MediaAdapter(mMediaUriList, this);
         mMediaRecyclerView.setAdapter(mMediaAdapter);
     }
 
-    private static final int PICK_IMAGE_INTENT = 1;
+    private static final int PICK_MEDIA_INTENT = 1;
 
     private void openGallery() {
-        Intent intent = new Intent();
-        intent.setType("image/*");
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("video/* , image/*");
         intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true); //allow you to select multiple images
-        intent.setAction(intent.ACTION_GET_CONTENT);
-        startActivityForResult(Intent.createChooser(intent, "Select Picture(s)"), PICK_IMAGE_INTENT);
+        startActivityForResult(Intent.createChooser(intent, "Select Media(s)"), PICK_MEDIA_INTENT);
     }
 
     private void call(String name) {
@@ -324,41 +370,42 @@ public class ChatActivity extends BaseActivity {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists())
-                    for (DataSnapshot dc : dataSnapshot.getChildren()){
+                    for (DataSnapshot dc : dataSnapshot.getChildren()) {
                         User user = dc.getValue(User.class);
+                        if (user != null) {
+                            Call call = getSinchServiceInterface().callUser(user.getPhone());
+                            String callId = call.getCallId();
 
-                        Call call = getSinchServiceInterface().callUser(user.getPhone());
-                        String callId = call.getCallId();
-
-                        Intent callScreen = new Intent(getApplicationContext(), CallScreenActivity.class);
-                        callScreen.putExtra(SinchService.CALL_ID, callId);
-                        callScreen.putExtra(SinchService.CALL_NAME, user.getName());
-                        callScreen.putExtra(SinchService.CALL_IMAGE, user.getImage_uri());
-                        startActivity(callScreen);
+                            Intent callScreen = new Intent(getApplicationContext(), CallScreenActivity.class);
+                            callScreen.putExtra(SinchService.CALL_ID, callId);
+                            callScreen.putExtra(SinchService.CALL_NAME, user.getName());
+                            callScreen.putExtra(SinchService.CALL_IMAGE, user.getImage_uri());
+                            startActivity(callScreen);
+                        }
                     }
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                Toast.makeText(getApplicationContext(), "call ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void showUserOnMap(String name) {
 
-        DatabaseReference mUserDB = FirebaseDatabase.getInstance().getReference().child("USER");
+        DatabaseReference mUserDB = FirebaseDatabase.getInstance().getReference().child("USER").child("userInfo");
         Query query = mUserDB.orderByChild("name").equalTo(name);
         query.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists())
-                    for (DataSnapshot dc : dataSnapshot.getChildren()){
+                    for (DataSnapshot dc : dataSnapshot.getChildren()) {
                         GeoFire geoFire = new GeoFire(FirebaseDatabase.getInstance().getReference("LOCATION"));
                         geoFire.getLocation(dc.getKey(), new LocationCallback() {
                             @Override
                             public void onLocationResult(String key, GeoLocation location) {
-                                if (location != null){
+                                if (location != null) {
                                     Intent intent = new Intent(getApplicationContext(), MapsActivity.class);
                                     intent.putExtra("latitude", location.latitude);
                                     intent.putExtra("longitude", location.longitude);
@@ -369,7 +416,7 @@ public class ChatActivity extends BaseActivity {
 
                             @Override
                             public void onCancelled(DatabaseError databaseError) {
-
+                                Toast.makeText(getApplicationContext(), "getLocation ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
                             }
                         });
                     }
@@ -377,7 +424,7 @@ public class ChatActivity extends BaseActivity {
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                Toast.makeText(getApplicationContext(), "showUserOnMap ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -386,14 +433,41 @@ public class ChatActivity extends BaseActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == RESULT_OK)
-            if (requestCode == PICK_IMAGE_INTENT) {
-                if (data.getClipData() == null) { //if there are no multiple selections
-                    mMediaUriList.add(data.getData().toString());
-                } else
-                    for (int i = 0; i <= data.getClipData().getItemCount(); i++)
-                        mMediaUriList.add(data.getClipData().getItemAt(i).getUri().toString());
-                mMediaAdapter.notifyDataSetChanged();
+        if (resultCode == RESULT_OK) {
+            switch (requestCode) {
+                case PICK_MEDIA_INTENT:
+                    if (data != null) {
+                        if (data.getClipData() == null) { //if there are no multiple selections
+                            mMediaUriList.add(Objects.requireNonNull(data.getData(), "onActivityResult Data Can't Be Null").toString());
+                        } else
+                            for (int i = 0; i <= data.getClipData().getItemCount(); i++)
+                                mMediaUriList.add(data.getClipData().getItemAt(i).getUri().toString());
+                    }
+                    mMediaAdapter.notifyDataSetChanged();
+                    break;
+                case CAMERA_REQUEST:
+                    if (data != null)
+                        mMediaUriList.add(Objects.requireNonNull(data.getData(), "onActivityResult Data Can't Be Null").toString());
+                    break;
             }
+        }
+
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case CAMERA_PERMISSION_REQUEST:
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "camera permission granted", Toast.LENGTH_SHORT).show();
+                    Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+                    startActivityForResult(cameraIntent, CAMERA_REQUEST);
+                } else {
+                    Toast.makeText(this, "camera permission denied", Toast.LENGTH_SHORT).show();
+                }
+                break;
+
+        }
     }
 }

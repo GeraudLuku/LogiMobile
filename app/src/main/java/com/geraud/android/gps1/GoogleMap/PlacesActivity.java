@@ -32,7 +32,6 @@ import java.util.Objects;
 public class PlacesActivity extends AppCompatActivity {
 
     private static final int REQUEST_PERMISSION_CODE = 1;
-    private RecyclerView mPlacesRecyclerView;
     private RecyclerView.Adapter mPlaceAdapter;
 
     private DatabaseReference mDatabaseReference = FirebaseDatabase.getInstance().getReference();
@@ -70,13 +69,13 @@ public class PlacesActivity extends AppCompatActivity {
     private void initializeRecyclerView() {
         mPlaces = new ArrayList<>();
         mContactList = new ArrayList<>();
-        mPlacesRecyclerView = findViewById(R.id.recyclerView);
-        mPlacesRecyclerView.setNestedScrollingEnabled(false);
-        mPlacesRecyclerView.setHasFixedSize(false);
-        mPlacesRecyclerView.addItemDecoration(new DividerItemDecoration(mPlacesRecyclerView.getContext(), DividerItemDecoration.VERTICAL));
-        mPlacesRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false));
+        RecyclerView placesRecyclerView = findViewById(R.id.recyclerView);
+        placesRecyclerView.setNestedScrollingEnabled(false);
+        placesRecyclerView.setHasFixedSize(false);
+        placesRecyclerView.addItemDecoration(new DividerItemDecoration(placesRecyclerView.getContext(), DividerItemDecoration.VERTICAL));
+        placesRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false));
         mPlaceAdapter = new PlacesRecyclerAdapter(mPlaces, getApplicationContext(),mPhone);
-        mPlacesRecyclerView.setAdapter(mPlaceAdapter);
+        placesRecyclerView.setAdapter(mPlaceAdapter);
     }
 
     public void checkButton(View v) {
@@ -86,9 +85,9 @@ public class PlacesActivity extends AppCompatActivity {
                 LoadPlaces();
                 break;
             case R.id.radio_two:
-                if (checkPermission())
+                if (checkPermission()) {
                     LoadFriendsPlaces();
-                else
+                }else
                     requestPermission();
                 break;
             default:
@@ -98,7 +97,8 @@ public class PlacesActivity extends AppCompatActivity {
     }
 
     private void LoadPlaces() {
-        mPlaces.clear(); //first clear the list
+        mPlaces.clear(); // clear list
+        mPlaceAdapter.notifyDataSetChanged(); // let your adapter know about the changes and reload view.
         mDatabaseReference.child("PLACES").child(mPhone).addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -118,8 +118,8 @@ public class PlacesActivity extends AppCompatActivity {
     }
 
     private void LoadFriendsPlaces() {
-        mPlaces.clear(); //first clear the list
-
+        mPlaces.clear(); // clear list
+        mPlaceAdapter.notifyDataSetChanged(); // let your adapter know about the changes and reload view.
         //for each friend
         for (String contact : mContactList)
             mDatabaseReference.child("PLACES").child(contact).addValueEventListener(new ValueEventListener() {

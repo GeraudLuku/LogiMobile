@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -9,17 +8,27 @@
     <TextureView
         android:id="@+id/textureView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
+        android:layout_marginEnd="0dp"
+        android:layout_marginBottom="0dp" />
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/thumbnailRecyclerView"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="100dp"
+        android:layout_above="@+id/progressBar2"
         android:layout_alignParentStart="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="95dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginBottom="34dp"
         android:orientation="horizontal"
-        tools:listitem="@layout/recycler_view_item" />
+        android:padding="8dp"
+        tools:listitem="@layout/camera_recycler_image_view" />
 
     <Button
         android:id="@+id/closeCameraButton"
@@ -27,7 +36,7 @@
         android:layout_height="24dp"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
-        android:layout_marginStart="14dp"
+        android:layout_marginStart="20dp"
         android:layout_marginTop="19dp"
         android:background="@drawable/close_camera" />
 
@@ -49,17 +58,19 @@
         android:layout_alignParentBottom="true"
         android:layout_marginEnd="137dp"
         android:layout_marginBottom="16dp"
-        android:text="Picture"
+        android:text="@string/picture"
         android:visibility="gone" />
 
     <Button
         android:id="@+id/flashButon"
         android:layout_width="24dp"
         android:layout_height="24dp"
-        android:layout_alignEnd="@+id/progressBar2"
         android:layout_alignParentTop="true"
+        android:layout_marginStart="158dp"
         android:layout_marginTop="19dp"
-        android:layout_marginEnd="54dp"
+        android:layout_marginEnd="147dp"
+        android:layout_toStartOf="@+id/orientationButton"
+        android:layout_toEndOf="@+id/closeCameraButton"
         android:background="@drawable/flash_off" />
 
     <Button
@@ -80,9 +91,10 @@
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
         android:layout_marginEnd="137dp"
-        android:layout_marginBottom="17dp"
-        android:progress="1"
-        android:max="11"
+        android:layout_marginBottom="16dp"
+        android:max="10"
+        android:progress="10"
+        android:indeterminateTint="@color/white"
         android:progressDrawable="@drawable/circle"
         android:visibility="visible" />
 

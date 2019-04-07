@@ -14,8 +14,7 @@ public class TimeAgo {
     public static String getTime(long time) {
         Calendar cal = Calendar.getInstance(Locale.ENGLISH);
         cal.setTimeInMillis(time);
-        String date = DateFormat.format("HH:MM", cal).toString();
-        return date;
+        return DateFormat.format("HH:MM", cal).toString();
     }
 
     public static String getTimeAgo(long time) {

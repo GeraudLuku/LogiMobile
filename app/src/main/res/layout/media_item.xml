@@ -12,5 +12,6 @@
         android:layout_height="100dp"
         android:background="@android:color/transparent"
         android:padding="2dp"
-        tools:src="@drawable/test_image" />
+        tools:src="@drawable/test_image"
+        android:contentDescription="@string/change_image_of_user"/>
 </LinearLayout>

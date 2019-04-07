@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.FloatingActionButton;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -16,9 +15,7 @@ import com.geraud.android.gps1.Camera.CameraActivity;
 import com.geraud.android.gps1.R;
 
 public class ChatsActivity extends AppCompatActivity {
-
-    private BottomNavigationView mBottmNavigation;
-    private FloatingActionButton mNewChatBtn;
+    public static final String CHATS_ACTIVITY_CAMERA_EXTRA = "chat";
 
     private ChatsFragment mChatsFragment;
 
@@ -28,16 +25,16 @@ public class ChatsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chats);
 
+        mChatsFragment = new ChatsFragment();
+
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
         initialiseFragment();
 
-        mChatsFragment = new ChatsFragment();
-
         //new chat button
-        mNewChatBtn = findViewById(R.id.btn_new_chat);
-        mNewChatBtn.setOnClickListener(new View.OnClickListener() {
+        FloatingActionButton newChatBtn = findViewById(R.id.btn_new_chat);
+        newChatBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(getApplicationContext(), FindUserActivity.class));
@@ -45,15 +42,15 @@ public class ChatsActivity extends AppCompatActivity {
         });
 
         //bottom navigation
-        mBottmNavigation = findViewById(R.id.chat_activity_bottom_navigation);
-        mBottmNavigation.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+        BottomNavigationView buttomNavigation = findViewById(R.id.chat_activity_bottom_navigation);
+        buttomNavigation.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
                 switch (menuItem.getItemId()) {
                     case R.id.bottom_chat_camera:
                         //open camera
                         Intent cameraIntent = new Intent(getApplicationContext(),CameraActivity.class);
-                        cameraIntent.putExtra("chat","chatsActivity");
+                        cameraIntent.putExtra(CHATS_ACTIVITY_CAMERA_EXTRA,"chatsActivity");
                         startActivity(cameraIntent);
                         return true;
                     default:

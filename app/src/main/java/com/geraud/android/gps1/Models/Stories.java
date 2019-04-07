@@ -49,7 +49,7 @@ public class Stories implements Serializable {
         return phone;
     }
 
-    public void setPhone(String media) {
+    public void setPhone(String phone) {
         this.phone = phone;
     }
 
@@ -93,8 +93,9 @@ public class Stories implements Serializable {
         this.type = type;
     }
 
-    public void addStoryToArray(Stories mStories) {
-        storyObjectArrayList.add(mStories);
+
+    public void addStoryToArray(Stories story) {
+        storyObjectArrayList.add(story);
     }
 
     public ArrayList<Stories> getStoryObjectArrayList() {
@@ -104,4 +105,5 @@ public class Stories implements Serializable {
     public int getCount() {
         return storyObjectArrayList.size();
     }
+
 }

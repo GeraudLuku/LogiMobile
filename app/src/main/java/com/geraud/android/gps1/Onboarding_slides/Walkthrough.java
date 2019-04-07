@@ -2,8 +2,8 @@ package com.geraud.android.gps1.Onboarding_slides;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Html;
@@ -19,13 +19,16 @@ import com.geraud.android.gps1.Registration;
 
 public class Walkthrough extends AppCompatActivity {
     private static final String TAG = "WalkthroughActivity";
-    private SliderAdapter mSliderAdapter;
+
     private ViewPager mViewPager;
     private LinearLayout mLinearLayout;
+
     private TextView[] mDots;
-    private Button back, next;
-    private int mCurrentPge;
-    ViewPager.OnPageChangeListener onPageChangeListener = new ViewPager.OnPageChangeListener() {
+    private Button mBack, mNext;
+
+    private int mCurrentPage;
+
+    ViewPager.OnPageChangeListener mOnPageChangeListener = new ViewPager.OnPageChangeListener() {
         @Override
         public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
 
@@ -34,26 +37,27 @@ public class Walkthrough extends AppCompatActivity {
         @Override
         public void onPageSelected(int position) {
             addDotIndicator(position);
-            mCurrentPge = position;
+            mCurrentPage = position;
+
             if (position == 0) {
-                back.setVisibility(View.GONE);
-                back.setEnabled(false);
-                next.setEnabled(true);
-                back.setText("");
-                next.setText("Next");
+                mBack.setVisibility(View.GONE);
+                mBack.setEnabled(false);
+                mNext.setEnabled(true);
+                mBack.setText("");
+                mNext.setText(getString(R.string.next));
             } else if (position == mDots.length - 1) {
-                back.setEnabled(true);
-                next.setEnabled(true);
-                back.setVisibility(View.VISIBLE);
-                back.setText("Back");
-                next.setText("Finish");
+                mBack.setEnabled(true);
+                mNext.setEnabled(true);
+                mBack.setVisibility(View.VISIBLE);
+                mBack.setText(getString(R.string.back));
+                mNext.setText(getString(R.string.finish));
 
             } else {
-                back.setEnabled(true);
-                next.setEnabled(true);
-                back.setVisibility(View.VISIBLE);
-                back.setText("Back");
-                next.setText("Next");
+                mBack.setEnabled(true);
+                mNext.setEnabled(true);
+                mBack.setVisibility(View.VISIBLE);
+                mBack.setText(getString(R.string.back));
+                mNext.setText(getString(R.string.next));
             }
         }
 
@@ -69,35 +73,39 @@ public class Walkthrough extends AppCompatActivity {
         setContentView(R.layout.activity_walkthrough);
 
         //declare in the sharedpreference that this activity has been opened once
-        SharedPreferences prefs = getSharedPreferences("prefs", MODE_PRIVATE);
-        SharedPreferences.Editor editor = prefs.edit();
+        //        If you do not call commit() or apply(), your changes will not be saved.
+        //                Commit() writes the changes synchronously and directly to the file
+        //                Apply() writes the changes to the in-memory SharedPreferences immediately but begins an asynchronous commit to disk
+        SharedPreferences sharedPreferences = getSharedPreferences("mSharedPreferences", MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putBoolean("firsStart", false);
+        editor.apply();
 
         //configs
         mLinearLayout = findViewById(R.id.linearLayout);
         mViewPager = findViewById(R.id.pager);
-        back = findViewById(R.id.button);
-        next = findViewById(R.id.button2);
-        mSliderAdapter = new SliderAdapter(this);
+        mBack = findViewById(R.id.button);
+        mNext = findViewById(R.id.button2);
+        SliderAdapter mSliderAdapter = new SliderAdapter(getApplicationContext());
         mViewPager.setAdapter(mSliderAdapter);
 
-        back.setOnClickListener(new View.OnClickListener() {
+        mBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mViewPager.setCurrentItem(mCurrentPge - 1);
+                mViewPager.setCurrentItem(mCurrentPage - 1);
             }
         });
-        next.setOnClickListener(new View.OnClickListener() {
+        mNext.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mViewPager.setCurrentItem(mCurrentPge + 1);
-                if (mCurrentPge == 4) {
+                mViewPager.setCurrentItem(mCurrentPage + 1);
+                if (mCurrentPage == 4) {
                     startActivity(new Intent(Walkthrough.this, Registration.class));
                 }
             }
         });
         addDotIndicator(0);
-        mViewPager.addOnPageChangeListener(onPageChangeListener);
+        mViewPager.addOnPageChangeListener(mOnPageChangeListener);
     }
 
     public void addDotIndicator(int position) {
@@ -105,14 +113,14 @@ public class Walkthrough extends AppCompatActivity {
         mDots = new TextView[4];
         mLinearLayout.removeAllViews();
         for (int i = 0; i < mDots.length; i++) {
-            mDots[i] = new TextView(this);
+            mDots[i] = new TextView(getApplicationContext());
             mDots[i].setText(Html.fromHtml("&#8226;"));
-            mDots[i].setTextColor(getResources().getColor(R.color.colorAccent));
+            mDots[i].setTextColor(ContextCompat.getColor(getApplicationContext(),R.color.colorAccent));
             mDots[i].setTextSize(35);
             mLinearLayout.addView(mDots[i]);
         }
         if (mDots.length > 0) {
-            mDots[position].setTextColor(getResources().getColor(R.color.black));
+            mDots[position].setTextColor(ContextCompat.getColor(getApplicationContext(),R.color.black));
         }
     }
 }

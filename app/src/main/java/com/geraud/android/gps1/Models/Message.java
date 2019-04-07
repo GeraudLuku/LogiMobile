@@ -7,11 +7,11 @@ import com.geraud.android.gps1.Chat.ChatType;
 import java.util.ArrayList;
 
 public class Message extends ChatType {
-    String messageId,
+    private String messageId,
             text,
             senderId;
-    long timestamp;
-    ArrayList<String> mediaUrlist;
+    private long timestamp;
+    private ArrayList<String> mediaUrlist;
 
     public Message(String messageId, String text, String senderId, long timestamp, ArrayList<String> mediaUrlist) {
         this.messageId = messageId;
@@ -23,6 +23,10 @@ public class Message extends ChatType {
 
     public long getTimestamp() {
         return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 
     public String getMessageId() {

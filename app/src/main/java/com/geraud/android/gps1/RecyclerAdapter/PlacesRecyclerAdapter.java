@@ -19,7 +19,6 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import com.geraud.android.gps1.Models.Place;
 import com.geraud.android.gps1.R;
-import com.google.android.gms.maps.model.LatLng;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -53,12 +52,12 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
-        View layoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.place_item, null, false);
+        View layoutView = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.place_item, viewGroup, false);
         return new ViewHolder(layoutView);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull final ViewHolder holder, final int position) {
+    public void onBindViewHolder(@NonNull final ViewHolder holder,  int position) {
 
         //get address of location
         try {
@@ -111,8 +110,8 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
             public void onClick(View v) {
                 //send LatLng to Maps Activity
                 Intent returnIntent = new Intent();
-                returnIntent.putExtra("latitude", mPlacesList.get(position).getLatitude());
-                returnIntent.putExtra("longitude", mPlacesList.get(position).getLongitude());
+                returnIntent.putExtra("latitude", mPlacesList.get(holder.getAdapterPosition()).getLatitude());
+                returnIntent.putExtra("longitude", mPlacesList.get(holder.getAdapterPosition()).getLongitude());
                 ((Activity) mContext).setResult(Activity.RESULT_OK, returnIntent);
                 ((Activity) mContext).finish();
             }
@@ -163,6 +162,5 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
             mDeletePlace = itemView.findViewById(R.id.action_button_2);
         }
     }
-
 }
 

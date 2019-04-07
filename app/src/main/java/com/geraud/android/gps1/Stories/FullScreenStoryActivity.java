@@ -1,7 +1,9 @@
 package com.geraud.android.gps1.Stories;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -23,7 +25,6 @@ import com.geraud.android.gps1.Models.Stories;
 import com.geraud.android.gps1.Models.User;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.RecyclerAdapter.StoriesSliderAdapter;
-import com.google.android.gms.maps.model.LatLng;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -36,18 +37,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class FullScreenStoryActivity extends AppCompatActivity implements GestureDetector.OnGestureListener {
 
     public static final int SWIPE_THRESHOLE = 100;
     public static final int VELOCITY_THRESHOLE = 100;
 
-    private ViewPager mViewPager;
     private ImageView mUserImage;
     private TextView mUserName, mTimeStamp;
     private ImageButton mGotoLocationButton, mChatButton;
-
-    private TextView bars[];
 
     private LinearLayout mBarLayout;
 
@@ -79,32 +78,35 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
                         public void onDataChange(DataSnapshot dataSnapshot) {
                             if (dataSnapshot.exists()) {
                                 //if the chat already exists, open the chat in chat activity
-                                getChatData(dataSnapshot.getKey());
+                                Chat mChat = new Chat(dataSnapshot.getKey());
+                                mChatList.add(mChat);
+                                getChatData(mChat.getChatId());
                             } else {
                                 //if it doesn't exist create a new chat then......
                                 String key = FirebaseDatabase.getInstance().getReference().child("CHAT").push().getKey();
                                 DatabaseReference userDB = FirebaseDatabase.getInstance().getReference().child("USER");
                                 DatabaseReference chatInfoDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(key).child("info");
+                                String destination = mStoriesList.get(mStoriesSliderAdapter.getCurrentPosition()).getPhone();
 
                                 mNewChatMap.put("id", key);
                                 mNewChatMap.put("lastMessage/", null);
-                                mNewChatMap.put("users/" + FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber(), true);
-                                mNewChatMap.put("users/" + mStoriesList.get(mStoriesSliderAdapter.getCurrentPosition()).getPhone(), true);
+                                mNewChatMap.put("users/" + mUserPhone, true);
+                                mNewChatMap.put("users/" + destination, true);
                                 mNewChatMap.put("name", null);
                                 mNewChatMap.put("type", "single");
                                 mNewChatMap.put("image", null);
 
                                 Map<String, String> myChatMap = new HashMap<>();
                                 myChatMap.put("type", "single");
-                                myChatMap.put("user", mStoriesList.get(mStoriesSliderAdapter.getCurrentPosition()).getPhone());
+                                myChatMap.put("user", destination);
 
                                 Map<String, String> singleChatMap = new HashMap<>();
                                 singleChatMap.put("type", "single");
-                                singleChatMap.put("user", FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
+                                singleChatMap.put("user", mUserPhone);
 
                                 chatInfoDB.updateChildren(mNewChatMap);
-                                userDB.child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("chat").child(key).setValue(myChatMap); //chat id set in my Document
-                                userDB.child(myChatMap.get("user")).child("chat").child(key).setValue(singleChatMap); // set chat id in the other users document
+                                userDB.child(mUserPhone).child("chat").child(key).setValue(myChatMap); //chat id set in my Document
+                                userDB.child(destination).child("chat").child(key).setValue(singleChatMap); // set chat id in the other users document
 
                                 //open chatActivity for this newly created chat
                                 getChatData(key);
@@ -113,7 +115,7 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
 
                         @Override
                         public void onCancelled(DatabaseError databaseError) {
-
+                            Toast.makeText(getApplicationContext(), "FullScreenStory ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
                         }
                     });
                     break;
@@ -121,9 +123,11 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
         }
     };
 
-    private HashMap mNewChatMap = new HashMap();
+    private Map<String, Object> mNewChatMap = new HashMap<>();
     private List<Chat> mChatList = new ArrayList<>();
     private List<ChatInfo> mChatInfo = new ArrayList<>();
+
+    private String mUserPhone;
 
     private void getChatData(String chatId) {
         DatabaseReference mChatDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(chatId).child("info");
@@ -131,11 +135,14 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
+                    ChatInfo chatInfo = dataSnapshot.getValue(ChatInfo.class); //get chat info Object
+                    mChatInfo.add(chatInfo);
+
                     String chatId = "";
 
                     //getting id of the chat
                     if (dataSnapshot.child("id").getValue() != null)
-                        chatId = dataSnapshot.child("id").getValue().toString();
+                        chatId = Objects.requireNonNull(dataSnapshot.child("id").getValue(), "ChatId Can't Be Null").toString();
 
                     //getting all users
                     for (DataSnapshot userSnaphshot : dataSnapshot.child("users").getChildren())
@@ -143,21 +150,28 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
                             if (mChat.getChatId().equals(chatId)) {
                                 User mUser = new User(userSnaphshot.getKey());
                                 mChat.addUserToArrayList(mUser);
-                                getUserData(mUser, chatId);
+                                getUserData(mUser);
                             }
                         }
+                    //when every thing is loaded create intent to chat Activity
+                    // create intent here and send extras (mChatinfo,mChatList)
+                    Intent intent = new Intent(getApplicationContext(), ChatActivity.class);
+                    intent.putExtra("chatObject", mChatList.get(0));  // get the first document i the list because there is only one document
+                    intent.putExtra("chatInfoObject", mChatInfo.get(0));
+                    startActivity(intent);
+                    finish();
                 }
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                Toast.makeText(FullScreenStoryActivity.this, "getChatData ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
 
     }
 
-    private void getUserData(User mUser, final String chatId) {
+    private void getUserData(User mUser) {
         DatabaseReference mUserDb = FirebaseDatabase.getInstance().getReference().child("USER").child(mUser.getPhone());
         mUserDb.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -165,7 +179,7 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
                 User mUser = new User(dataSnapshot.getKey());
                 //getting notification key
                 if (dataSnapshot.child("notificationKey").getValue() != null)
-                    mUser.setNotificationKey(dataSnapshot.child("notificationKey").getValue().toString());
+                    mUser.setNotificationKey(Objects.requireNonNull(dataSnapshot.child("notificationKey").getValue(), "UserNotificationKey Cant Be NUll").toString());
 
                 for (Chat mChat : mChatList) {
                     for (User mUserIt : mChat.getUserObjectArrayList()) {
@@ -174,51 +188,23 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
                         }
                     }
                 }
-                //to put in the chatInfo object
-                getChatMetaData(chatId);
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
+                Toast.makeText(FullScreenStoryActivity.this, "getUserData ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void getChatMetaData(String chatId) {
-        DatabaseReference mChatInfoDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(chatId).child("info");
-        mChatInfoDB.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                        ChatInfo chatInfo = dc.getValue(ChatInfo.class);
-                        mChatInfo.add(chatInfo);
-                    }
-                    // create intent here and send extras (mChatinfo,mChatList)
-                    Intent intent = new Intent(getApplicationContext(), ChatActivity.class);
-                    intent.putExtra("chatObject", mChatList.get(0));  // get the first document i the list because there is only one document
-                    intent.putExtra("chatInfoObject", mChatInfo.get(0));
-                    startActivity(intent);
-                    finish();
-                }
 
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-
-    }
-
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_full_screen_story);
 
         //init views
-        mViewPager = findViewById(R.id.viewPager);
         mUserImage = findViewById(R.id.userImage);
         mUserName = findViewById(R.id.userName);
         mTimeStamp = findViewById(R.id.timestamp);
@@ -235,16 +221,19 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
         mStoriesList = model.getStoryObjectArrayList();
 
         mStoriesSliderAdapter = new StoriesSliderAdapter(getApplicationContext(), mStoriesList);
-        mViewPager.setAdapter(mStoriesSliderAdapter);
-        mViewPager.addOnPageChangeListener(viewPagerPageChangeListener);
 
-        addBottomDots(mStoriesSliderAdapter.getCurrentPosition());
+        mUserPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Cannot Be Null").getPhoneNumber();
+
+        addBottomDots(0);
 
         //on viewpager touch hide all views
-        mViewPager.setOnTouchListener(new View.OnTouchListener() {
+        ViewPager viewPager = findViewById(R.id.viewPager);
+        viewPager.setAdapter(mStoriesSliderAdapter);
+        viewPager.addOnPageChangeListener(viewPagerPageChangeListener);
+        viewPager.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                Boolean result = false;
+                boolean result = false;
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         visibility(false);
@@ -282,8 +271,11 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
         }
 
         @Override
-        public void onPageSelected(int i) {
-            addBottomDots(i);
+        public void onPageSelected(int position) {
+            addBottomDots(position);
+
+            if (position > mStoriesSliderAdapter.getCount() - 1) // if you scroll pass the last slide, end the activity
+                finish();
 
         }
 
@@ -311,38 +303,20 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
         }
     }
 
-    //btnNextClick
-    public void nextSlide(View v) {
-        // checking for last page
-        // if last page home screen will be launched
-        int current = getItem(mStoriesSliderAdapter.getCurrentPosition());
-//        if (current < layouts.length) {
-        if (current < mStoriesSliderAdapter.getCount()) {
-            // move to next screen
-            mViewPager.setCurrentItem(current);
-        } else {
-            finish();
-        }
-    }
-
-    private int getItem(int i) {
-        return mViewPager.getCurrentItem() + i;
-    }
-
     // set of Dots points
     private void addBottomDots(int currentPage) {
-        bars = new TextView[mStoriesSliderAdapter.getCount()];
+        TextView[] bars = new TextView[mStoriesSliderAdapter.getCount()];
         mBarLayout.removeAllViews();
         for (int i = 0; i < bars.length; i++) {
-            bars[i] = new TextView(this);
+            bars[i] = new TextView(getApplicationContext());
             bars[i].setText(Html.fromHtml("<hr>"));
             bars[i].setTextSize(40);
-            bars[i].setTextColor(getResources().getColor(R.color.gray));  // dot_inactive
+            bars[i].setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.gray));  // dot_inactive
             mBarLayout.addView(bars[i]);
         }
 
         if (bars.length > 0)
-            bars[currentPage].setTextColor(getResources().getColor(R.color.white)); // dot_active
+            bars[currentPage].setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.white)); // dot_active
     }
 
     @Override
@@ -372,35 +346,16 @@ public class FullScreenStoryActivity extends AppCompatActivity implements Gestur
 
     @Override
     public boolean onFling(MotionEvent downEvent, MotionEvent moveEvent, float velocityX, float velocityY) {
-        Boolean result = false;
+        boolean result = false;
 
         float diffY = moveEvent.getY() - downEvent.getY();
-        float diffX = moveEvent.getX() - downEvent.getX();
 
-        //which was greater movement across y or x
-        if (Math.abs(diffX) > Math.abs(diffY)) {
-            //right or left swipe
-            if (Math.abs(diffX) > SWIPE_THRESHOLE && Math.abs(velocityX) > VELOCITY_THRESHOLE) {
-                if (diffX > 0) {
-                    //on swipe right
-                } else {
-                    //on swipe left
-                }
+        if (Math.abs(diffY) > SWIPE_THRESHOLE && Math.abs(velocityY) > VELOCITY_THRESHOLE) {
+            if (diffY > 0) {
+                //on swipe down
+                finish();
+                result = true;
             }
-        } else {
-            // up or down swipe
-            if (Math.abs(diffY) > SWIPE_THRESHOLE && Math.abs(velocityY) > VELOCITY_THRESHOLE) {
-                if (diffY > 0) {
-                    //on swipe down
-                    finish();
-                    result = true;
-                } else {
-                    //on swipe top
-                }
-
-            }
-
-
         }
         return result;
     }

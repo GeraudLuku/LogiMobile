@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.geraud.android.gps1.Models.Stories;
@@ -46,25 +47,26 @@ public class StoriesRecyclerAdapter extends RecyclerView.Adapter<StoriesRecycler
     }
 
     @Override
-    public void onBindViewHolder(@NonNull final StoriesRecyclerAdapter.ViewHolder holder, final int position) {
+    public void onBindViewHolder(@NonNull final StoriesRecyclerAdapter.ViewHolder holder, int position) {
         holder.setIsRecyclable(true);
 
         //set mName
-        mDatabaseReference.child(mStoriesList.get(position).getStoryObjectArrayList().get(mStoriesList.get(position).getCount() - 1).getPhone())
+        mDatabaseReference.child(mStoriesList.get(position).getStoryObjectArrayList().get(mStoriesList.get(position).getCount() - 1).getPhone()).child("userInfo")
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
-                        if (dataSnapshot.exists()){
-                            for (DataSnapshot dc : dataSnapshot.getChildren()){
+                        if (dataSnapshot.exists()) {
+                            for (DataSnapshot dc : dataSnapshot.getChildren()) {
                                 User user = dc.getValue(User.class);
-                                holder.setName(user.getName());
+                                if (user != null)
+                                    holder.setName(user.getName());
                             }
                         }
                     }
 
                     @Override
                     public void onCancelled(DatabaseError databaseError) {
-
+                        Toast.makeText(mContext, "StoriesRecyclerAdapter ValueEvent Cancelled", Toast.LENGTH_SHORT).show();
                     }
                 });
 
@@ -79,9 +81,9 @@ public class StoriesRecyclerAdapter extends RecyclerView.Adapter<StoriesRecycler
             @Override
             public void onClick(View v) {
                 //send stories object to viewpager activity
-                Intent intent = new Intent(v.getContext(),FullScreenStoryActivity.class);
-                intent.putExtra("story", mStoriesList.get(position));
-                v.getContext().startActivity(intent);
+                Intent intent = new Intent(mContext, FullScreenStoryActivity.class);
+                intent.putExtra("story", mStoriesList.get(holder.getAdapterPosition()));
+                mContext.startActivity(intent);
             }
         });
 
@@ -99,7 +101,7 @@ public class StoriesRecyclerAdapter extends RecyclerView.Adapter<StoriesRecycler
         private ImageView mLastImage;
         private RelativeLayout mStory;
 
-        public ViewHolder(View itemView) {
+        ViewHolder(View itemView) {
             super(itemView);
             mView = itemView;
 
@@ -113,11 +115,11 @@ public class StoriesRecyclerAdapter extends RecyclerView.Adapter<StoriesRecycler
             mName.setText(text);
         }
 
-        public void setTimeStamp(long timeStamp) {
+        void setTimeStamp(long timeStamp) {
             mTimeStamp.setText(TimeAgo.getTimeAgo(timeStamp));
         }
 
-        public void setLastImage(String uri) {
+        void setLastImage(String uri) {
             Glide.with(mContext).load(uri).into(mLastImage);
         }
     }

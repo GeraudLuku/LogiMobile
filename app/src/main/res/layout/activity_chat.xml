@@ -3,8 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".Chat.ChatActivity">
+    android:layout_height="match_parent">
 
     <android.support.design.widget.AppBarLayout
         android:id="@+id/appBar"
@@ -46,6 +45,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="100dp"
+                android:contentDescription="@string/change_image_of_user"
                 android:src="@drawable/direction"
                 android:visibility="invisible" />
 
@@ -54,6 +54,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="20dp"
+                android:contentDescription="@string/change_image_of_user"
                 android:src="@drawable/call_chat"
                 android:visibility="invisible" />
 
@@ -69,7 +70,7 @@
         android:layout_alignParentStart="true"
         android:layout_alignParentEnd="true"
         android:layout_marginStart="0dp"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="4dp"
         android:layout_marginEnd="0dp" />
 
     <LinearLayout
@@ -102,6 +103,8 @@
                 android:layout_weight="0.8"
                 android:background="@drawable/edittext"
                 android:hint="@string/message"
+                android:importantForAutofill="no"
+                android:inputType="text"
                 android:padding="10dp" />
 
             <ImageButton
@@ -113,8 +116,8 @@
                 android:layout_marginBottom="17dp"
                 android:layout_weight="0.2"
                 android:background="@android:color/transparent"
-                android:src="@drawable/clip"
-                android:text="addMedia" />
+                android:contentDescription="@string/change_image_of_user"
+                android:src="@drawable/clip" />
 
             <ImageButton
                 android:id="@+id/send"
@@ -125,8 +128,8 @@
                 android:layout_marginBottom="17dp"
                 android:layout_weight="0.2"
                 android:background="@android:color/transparent"
-                android:src="@drawable/send"
-                android:text="send" />
+                android:contentDescription="@string/change_image_of_user"
+                android:src="@drawable/send" />
         </LinearLayout>
 
 

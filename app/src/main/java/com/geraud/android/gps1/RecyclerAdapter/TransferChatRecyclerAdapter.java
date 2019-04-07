@@ -37,12 +37,13 @@ public class TransferChatRecyclerAdapter extends RecyclerView.Adapter<TransferCh
     private List<ChatInfo> mChatInfo;
     private Context mContext;
 
-    private String mPhone = FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber();
+    private String mPhone;
 
-    public TransferChatRecyclerAdapter(List<Chat> ChatList, List<ChatInfo> ChatInfo, Context context) {
+    public TransferChatRecyclerAdapter(List<Chat> ChatList, List<ChatInfo> ChatInfo, Context context,String phone) {
         this.mChatList = ChatList;
         this.mChatInfo = ChatInfo;
         this.mContext = context;
+        mPhone = phone;
     }
 
     @NonNull
@@ -52,12 +53,11 @@ public class TransferChatRecyclerAdapter extends RecyclerView.Adapter<TransferCh
         RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         layoutView.setLayoutParams(lp);
 
-        ViewHolder rcv = new ViewHolder(layoutView);
-        return rcv;
+        return new ViewHolder(layoutView);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull final ViewHolder holder, final int position) {
+    public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
 
         //load info on view
         if (mChatInfo.get(position).getType().equals("single")) {
@@ -70,12 +70,13 @@ public class TransferChatRecyclerAdapter extends RecyclerView.Adapter<TransferCh
                         for (DataSnapshot dc : dataSnapshot.getChildren())
                             if (!dc.getKey().equals(mPhone)) {
                                 User user = dc.getValue(User.class);
+                                if (user != null) {
+                                    Glide.with(mContext).load(Uri.parse(user.getImage_uri())).into(holder.mImageView);
+                                    holder.mContactName.setText(user.getName());
 
-                                Glide.with(mContext).load(Uri.parse(user.getImage_uri())).into(holder.mImageView);
-                                holder.mContactName.setText(user.getName());
-
-                                mChatInfo.get(holder.getAdapterPosition()).setImage(user.getImage_uri());
-                                mChatInfo.get(holder.getAdapterPosition()).setName(user.getName());
+                                    mChatInfo.get(holder.getAdapterPosition()).setImage(user.getImage_uri());
+                                    mChatInfo.get(holder.getAdapterPosition()).setName(user.getName());
+                                }
                             }
                 }
 
@@ -95,7 +96,7 @@ public class TransferChatRecyclerAdapter extends RecyclerView.Adapter<TransferCh
         holder.mIsSelected.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                mChatList.get(position).setSelected(isChecked);
+                mChatList.get(holder.getAdapterPosition()).setSelected(isChecked);
             }
         });
     }

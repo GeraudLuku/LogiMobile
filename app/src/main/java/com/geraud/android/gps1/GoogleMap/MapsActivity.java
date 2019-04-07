@@ -70,9 +70,11 @@ import com.geraud.android.gps1.InfoWindow.TrackerInfoWindow;
 import com.geraud.android.gps1.Models.Chat;
 import com.geraud.android.gps1.Models.ChatInfo;
 import com.geraud.android.gps1.Models.GeoFence;
+import com.geraud.android.gps1.Models.Message;
 import com.geraud.android.gps1.Models.Place;
 import com.geraud.android.gps1.Models.User;
 import com.geraud.android.gps1.R;
+import com.geraud.android.gps1.Registration;
 import com.geraud.android.gps1.Services.GeoQueries;
 import com.geraud.android.gps1.Services.SinchService;
 import com.geraud.android.gps1.Sinch.BaseActivity;
@@ -121,6 +123,7 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 import com.google.gson.Gson;
+import com.onesignal.OneSignal;
 import com.sinch.android.rtc.SinchError;
 import com.sinch.android.rtc.calling.Call;
 import com.theartofdev.edmodo.cropper.CropImage;
@@ -159,12 +162,9 @@ public class MapsActivity extends BaseActivity implements
     private SeekBar mVerticalSeekBar;
 
     private Dialog mUserInfoDialog;
-    private TextView closeText,
-            locationView;
-    private EditText userName;
-    private ImageButton changeImage, changeName;
-    private ImageView profileImage;
-    private Button updateInfo;
+    private TextView dLocationView;
+    private EditText dUserName;
+    private ImageView dProfileImage;
 
     private DatabaseReference mDatabaseReference;
     private DatabaseReference mSearchRef;
@@ -534,14 +534,14 @@ public class MapsActivity extends BaseActivity implements
                             .start(MapsActivity.this);
                     break;
                 case R.id.changeName:// set edit text focusable and enabled then change text
-                    userName.setEnabled(true);
-                    userName.setFocusable(true);
+                    dUserName.setEnabled(true);
+                    dUserName.setFocusable(true);
                     mModified = true;
                     break;
                 case R.id.updateInfo:
                     if (mModified) {
-                        if (!userName.getText().toString().equals(""))
-                            mUserInfoObject.setName(userName.getText().toString());
+                        if (!dUserName.getText().toString().equals(""))
+                            mUserInfoObject.setName(dUserName.getText().toString());
                         //upload image first
                         UploadTask uploadTask = mStorageReference.child("Profile Pictures").child(USER_KEY).child(USER_KEY + ".jpg").putFile(Uri.parse(mUserInfoObject.getImage_uri()));
                         uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
@@ -566,6 +566,9 @@ public class MapsActivity extends BaseActivity implements
                     } else
                         mUserInfoDialog.dismiss();
                     break;
+                case R.id.logOut:
+                    Toast.makeText(getApplicationContext(), "Hold Button To LogOut", Toast.LENGTH_SHORT).show();
+                    break;
                 default:
                     Toast.makeText(getApplicationContext(), "Invalid Click Id For Dialog", Toast.LENGTH_SHORT).show();
             }
@@ -576,20 +579,23 @@ public class MapsActivity extends BaseActivity implements
 
     private void createUserInfoDialog() {
         //change user name and image
-        // will initialise the dailog here first work with the dailog variables
+        // will initialise the dialog here first work with the dailog variables
         mUserInfoDialog.setContentView(R.layout.user_settings);
 
-        closeText = mUserInfoDialog.findViewById(R.id.txtclose);
-        locationView = mUserInfoDialog.findViewById(R.id.locationView);
-        userName = mUserInfoDialog.findViewById(R.id.nameEdittext);
-        changeImage = mUserInfoDialog.findViewById(R.id.changeImage);
-        profileImage = mUserInfoDialog.findViewById(R.id.imageView);
-        updateInfo = mUserInfoDialog.findViewById(R.id.updateInfo);
-        changeName = mUserInfoDialog.findViewById(R.id.changeName);
+
+        dLocationView = mUserInfoDialog.findViewById(R.id.locationView);
+        dProfileImage = mUserInfoDialog.findViewById(R.id.imageView);
+        dUserName = mUserInfoDialog.findViewById(R.id.nameEdittext);
+
+        ImageButton changeImage = mUserInfoDialog.findViewById(R.id.changeImage);
+        TextView closeText = mUserInfoDialog.findViewById(R.id.txtclose);
+        Button updateInfo = mUserInfoDialog.findViewById(R.id.updateInfo);
+        Button logOut = mUserInfoDialog.findViewById(R.id.logOut);
+        ImageButton changeName = mUserInfoDialog.findViewById(R.id.changeName);
 
         //setting user info
-        Glide.with(getApplicationContext()).load(mUserInfoObject.getImage_uri()).into(profileImage);
-        userName.setText(mUserInfoObject.getName());
+        Glide.with(getApplicationContext()).load(mUserInfoObject.getImage_uri()).into(dProfileImage);
+        dUserName.setText(mUserInfoObject.getName());
         mGeoFire.getLocation(mUserInfoObject != null ? mUserInfoObject.getPhone() : null, new LocationCallback() {
             @Override
             public void onLocationResult(String key, GeoLocation location) {
@@ -597,7 +603,7 @@ public class MapsActivity extends BaseActivity implements
                     try {
                         Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
                         List<Address> address = geocoder.getFromLocation(location.latitude, location.longitude, 1);
-                        locationView.setText(String.format(Locale.getDefault(), "Currently Located At : %s, %s %s", address.get(0).getFeatureName(), address.get(0).getLocality(), address.get(0).getCountryName()));
+                        dLocationView.setText(String.format(Locale.getDefault(), "Currently Located At : %s, %s %s", address.get(0).getFeatureName(), address.get(0).getLocality(), address.get(0).getCountryName()));
                     } catch (IOException e) {
                         Toast.makeText(getApplicationContext(), "Couldn't Get Address Of Your Location", Toast.LENGTH_SHORT).show();
                     }
@@ -616,6 +622,26 @@ public class MapsActivity extends BaseActivity implements
         changeImage.setOnClickListener(mUserInfoDialogClickListener);
         changeName.setOnClickListener(mUserInfoDialogClickListener);
         updateInfo.setOnClickListener(mUserInfoDialogClickListener);
+        logOut.setOnClickListener(mUserInfoDialogClickListener);
+        logOut.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                new AlertDialog.Builder(getApplicationContext())
+                        .setTitle("LogOut")
+                        .setMessage("Are You Sure You Really Want To LogOut?")
+                        .setCancelable(true)
+                        .setNegativeButton("LogOut", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                LogOut();
+                            }
+                        })
+                        .setPositiveButton("Cancel", null)
+                        .setIcon(R.drawable.logout)
+                        .show();
+                return true;
+            }
+        });
 
         Objects.requireNonNull(mUserInfoDialog.getWindow(), "UserInfoDialog Window Cant Be Null").setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         mUserInfoDialog.show();
@@ -951,14 +977,15 @@ public class MapsActivity extends BaseActivity implements
                                 String key = mDatabaseReference.child("CHAT").push().getKey();
                                 DatabaseReference userDB = mDatabaseReference.child("USER");
                                 DatabaseReference chatInfoDB = mDatabaseReference.child("CHAT").child(key).child("info");
+                                Message message = new Message(null, "Open to start chatting", null, System.currentTimeMillis(), null);
 
                                 mNewChatMap.put("id", key);
-                                mNewChatMap.put("lastMessage/", false);
+                                mNewChatMap.put("lastMessage/", message);
                                 mNewChatMap.put("users/" + USER_KEY, true);
                                 mNewChatMap.put("users/" + userInfo.getPhone(), true);
-                                mNewChatMap.put("name", false);
+                                mNewChatMap.put("name", null);
                                 mNewChatMap.put("type", "single");
-                                mNewChatMap.put("image", false);
+                                mNewChatMap.put("image", null);
 
                                 Map<String, String> myChatMap = new HashMap<>();
                                 myChatMap.put("type", "single");
@@ -996,7 +1023,7 @@ public class MapsActivity extends BaseActivity implements
         }
     };
 
-    private Map<String, Object> mNewChatMap = new HashMap<>();
+    private HashMap<String, Object> mNewChatMap = new HashMap<>();
     private List<Chat> mChatList = new ArrayList<>();
     private List<ChatInfo> mChatInfo = new ArrayList<>();
 
@@ -1006,6 +1033,8 @@ public class MapsActivity extends BaseActivity implements
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
+                    ChatInfo chatInfo = dataSnapshot.getValue(ChatInfo.class);
+                    mChatInfo.add(chatInfo);
                     String chatId = "";
 
                     //getting id of the chat
@@ -1018,9 +1047,15 @@ public class MapsActivity extends BaseActivity implements
                             if (mChat.getChatId().equals(chatId)) {
                                 User mUser = new User(userSnaphshot.getKey());
                                 mChat.addUserToArrayList(mUser);
-                                getUserData(mUser, chatId);
+                                getUserData(mUser);
                             }
                         }
+                    // create intent here and send extras (mChatInfo,mChatList)
+                    Intent intent = new Intent(getApplicationContext(), ChatActivity.class);
+                    intent.putExtra("chatObject", mChatList.get(0));  // get the first document i the list because there is only one document
+                    intent.putExtra("chatInfoObject", mChatInfo.get(0));
+                    startActivity(intent);
+                    finish();
                 }
             }
 
@@ -1032,7 +1067,7 @@ public class MapsActivity extends BaseActivity implements
 
     }
 
-    private void getUserData(User mUser, final String chatId) {
+    private void getUserData(User mUser) {
         DatabaseReference mUserDb = FirebaseDatabase.getInstance().getReference().child("USER").child(mUser.getPhone());
         mUserDb.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -1049,8 +1084,6 @@ public class MapsActivity extends BaseActivity implements
                         }
                     }
                 }
-                //to put in the chatInfo object
-                getChatMetaData(chatId);
             }
 
             @Override
@@ -1058,34 +1091,6 @@ public class MapsActivity extends BaseActivity implements
                 Toast.makeText(getApplicationContext(), "getUserData ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
-    }
-
-    private void getChatMetaData(String chatId) {
-        DatabaseReference mChatInfoDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(chatId).child("info");
-        mChatInfoDB.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                        ChatInfo chatInfo = dc.getValue(ChatInfo.class);
-                        mChatInfo.add(chatInfo);
-                    }
-                    // create intent here and send extras (mChatInfo,mChatList)
-                    Intent intent = new Intent(getApplicationContext(), ChatActivity.class);
-                    intent.putExtra("chatObject", mChatList.get(0));  // get the first document i the list because there is only one document
-                    intent.putExtra("chatInfoObject", mChatInfo.get(0));
-                    startActivity(intent);
-                    finish();
-                }
-
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Toast.makeText(getApplicationContext(), "getChatMetaData ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
-            }
-        });
-
     }
 
     private void peopleMenu() {
@@ -1210,7 +1215,6 @@ public class MapsActivity extends BaseActivity implements
                     startActivity(new Intent(getApplicationContext(), ChatsActivity.class));
                     break;
                 case R.id.places:
-                    //Todo: Create Activity That Will Show All Places And Return Location On Activity Result
                     Intent i = new Intent(getApplicationContext(), PlacesActivity.class);
                     startActivityForResult(i, PLACE_INTENT_REQUEST_CODE);
                     break;
@@ -1640,6 +1644,15 @@ public class MapsActivity extends BaseActivity implements
         mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").child("status").setValue(2);
     }
 
+    private void LogOut() {
+        OneSignal.setSubscription(false);
+        FirebaseAuth.getInstance().signOut();
+        Intent intent = new Intent(getApplicationContext(), Registration.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(intent);
+        finish();
+    }
+
     //this might be useful when i will implement the search bar so that when u press on
     // a search result it go directly to the location of the user on the map
     @Override
@@ -1674,7 +1687,7 @@ public class MapsActivity extends BaseActivity implements
         if (requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE) {
             CropImage.ActivityResult result = CropImage.getActivityResult(data);
             if (resultCode == RESULT_OK) {
-                profileImage.setImageURI(result.getUri());
+                dProfileImage.setImageURI(result.getUri());
                 mUserInfoObject.setImage_uri(result.getUri().toString());
                 mModified = true;
             } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE)
@@ -1708,11 +1721,11 @@ public class MapsActivity extends BaseActivity implements
             mPolyLines = new ArrayList<>();
             //add route(s) to the map.
             for (int i = 0; i < route.size(); i++) {
-                PolylineOptions mPolyLineOptions = new PolylineOptions();
-                mPolyLineOptions.color(ContextCompat.getColor(getApplicationContext(), R.color.blue));
-                mPolyLineOptions.width(10 + i * 3);
-                mPolyLineOptions.addAll(route.get(i).getPoints());
-                Polyline polyline = mMap.addPolyline(mPolyLineOptions);
+                PolylineOptions polyLineOptions = new PolylineOptions();
+                polyLineOptions.color(ContextCompat.getColor(getApplicationContext(), R.color.blue));
+                polyLineOptions.width(10 + i * 3);
+                polyLineOptions.addAll(route.get(i).getPoints());
+                Polyline polyline = mMap.addPolyline(polyLineOptions);
                 mPolyLines.add(polyline);
             }
 
@@ -1743,7 +1756,8 @@ public class MapsActivity extends BaseActivity implements
 
     //erase all Route lines from the map
     private void eraseAllRouteLines() {
-        mSnackBar.dismiss();
+        if (mSnackBar != null)
+            mSnackBar.dismiss();
         for (Polyline line : mPolyLines) {
             line.remove();
         }

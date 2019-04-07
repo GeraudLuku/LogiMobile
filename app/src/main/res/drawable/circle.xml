@@ -5,7 +5,8 @@
     android:thickness="20dp"
     android:useLevel="true">
 
-    <solid android:color="@color/light_blue"/>
+    <solid android:color="@color/_light_green"
+        />
 
     <size
         android:width="55dp"

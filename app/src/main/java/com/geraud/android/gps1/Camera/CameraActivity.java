@@ -1,6 +1,8 @@
 package com.geraud.android.gps1.Camera;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -25,7 +27,6 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -45,10 +46,10 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Chronometer;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.geraud.android.gps1.Chat.ChatsActivity;
 import com.geraud.android.gps1.R;
 
 import java.io.File;
@@ -63,6 +64,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -71,30 +74,34 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
 
     private final static int READ_EXTERNAL_STORAGE_PERMISSION_RESULT = 0;
     private final static int WRITE_EXTERNAL_STORAGE_PERMISSION_RESULT = 1;
+    private static final int REQUEST_VIDEO_TRIMMER = 11;
+    public static final String EXTRA_VIDEO_PATH = "video";
     private final static int REQUEST_CAMERA_PERMISSION_RESULT = 2;
-    private final static int REQUEST_GET_IMAGE_FROM_GALLERY = 3;
+    private final static int REQUEST_MEDIA_FROM_GALLERY = 3;
     private final static int MEDIASTORE_LOADER_ID = 0;
     private static final int STATE_PREVIEW = 0;
     private static final int STATE_WAIT_LOCK = 1;
+
+    private static final int MIN_CLICK_DURATION = 600;
 
     public static final String CAMERA_FRONT = "1";
     public static final String CAMERA_BACK = "0";
     private String cameraId = CAMERA_FRONT;
 
-    private boolean isFlashSupported;
-    private boolean isTorchOn;
+    private boolean mIsFlashSupported;
+    private boolean mIsTorchOn;
 
-    private static final int MIN_CLICK_DURATION = 600;
-    private long startClickTime;
-    private boolean longClickActive;
-    private boolean recording, pause = false;
-    private long elapsed;
-    private long remaningSecs = 0;
-    private long elapsedSecs = 0;
-    private Timer timer;
+    private String mLogiFolderName;
+
+    private long mStartClickTime;
+    private boolean mLongClickActive,
+            mIsRecording, mPause = false;
+    private long mElapsed;
+    private long mRemainingSecs = 0;
+    private long mElapsedSeconds = 0;
+    private Timer mTimer;
 
     private int mCaptureState = STATE_PREVIEW;
-    private RecyclerView mThumbnailRecyclerView;
     private MediaStoreAdapter mMediaStoreAdapter;
     private TextureView mTextureView;
     private TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
@@ -121,10 +128,41 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
     };
 
     private CameraDevice mCameraDevice;
+    private CameraDevice.StateCallback mCameraDeviceStateCallBack = new CameraDevice.StateCallback() {
+        @Override
+        public void onOpened(@NonNull CameraDevice camera) {
+            mCameraDevice = camera;
+            if (mIsRecording) {
+                try {
+                    createVideoFileName();
+                    startRecord();
+                    mMediaRecorder.start();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            } else
+                startPreview();
+            Toast.makeText(getApplicationContext(), "Connected To The Camera", Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        public void onDisconnected(CameraDevice camera) {
+            camera.close();
+            mCameraDevice = null;
+        }
+
+        @Override
+        public void onError(@NonNull CameraDevice camera, int error) {
+            camera.close();
+            mCameraDevice = null;
+            Toast.makeText(CameraActivity.this, "Error Opening Camera Closing...", Toast.LENGTH_SHORT).show();
+        }
+    };
     private String mCameraId;
     private Size mPreviewSize;
     private Size mVideoSize;
-    private Size mImageSize;
+    public Size mImageSize;
     private ImageReader mImageReader;
     private ImageReader.OnImageAvailableListener mOnImageAvailableListener = new ImageReader.OnImageAvailableListener() {
         @Override
@@ -134,9 +172,10 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
     };
 
     private class ImageSaver implements Runnable {
+
         private final Image mImage;
 
-        public ImageSaver(Image image) {
+        private ImageSaver(Image image) {
             mImage = image;
         }
 
@@ -154,19 +193,7 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                 exception.printStackTrace();
             } finally {
                 mImage.close();
-
-                Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mImageFileName))); // uri of the file can use it to send to other activity
-                sendBroadcast(mediaStoreUpdateIntent);
-
-                //if this activity was opened from another one open find user to send it to
-                //intent to the image full screen activity
-                Intent fullScreenIntent = new Intent(getApplicationContext(), FullScreenImageActivity.class);
-                if (getIntent().getExtras() != null)
-                    fullScreenIntent.putExtra("chat","chatsActivity");
-                fullScreenIntent.setData(Uri.fromFile(new File(mImageFileName)));
-                startActivity(fullScreenIntent);
-
+                updateImageMediaStore();
                 if (fileOutputStream != null) {
                     try {
                         fileOutputStream.close();
@@ -174,6 +201,14 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                         e.printStackTrace();
                     }
                 }
+
+                //if this activity was opened from another one open transfer Activity
+                //intent to the image full screen activity
+                Intent fullScreenIntent = new Intent(getApplicationContext(), FullScreenImageActivity.class);
+                if (getIntent().getStringExtra(ChatsActivity.CHATS_ACTIVITY_CAMERA_EXTRA) != null)
+                    fullScreenIntent.putExtra(ChatsActivity.CHATS_ACTIVITY_CAMERA_EXTRA, "chatsActivity");
+                fullScreenIntent.setData(Uri.fromFile(new File(mImageFileName)));
+                startActivity(fullScreenIntent);
             }
         }
     }
@@ -191,62 +226,29 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                 case STATE_WAIT_LOCK:
                     mCaptureState = STATE_PREVIEW;
                     Integer afstate = captureResult.get(CaptureResult.CONTROL_AF_STATE);
-                    if (afstate == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || afstate == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED) {
-                        Toast.makeText(getApplicationContext(), "auto focus locked", Toast.LENGTH_SHORT).show();
-                        startStillCaptureRequest();
-                    }
+                    if (afstate != null)
+                        if (afstate == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || afstate == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED) {
+                            Toast.makeText(getApplicationContext(), "auto focus locked", Toast.LENGTH_SHORT).show();
+                            startStillCaptureRequest();
+                        }
                     break;
             }
         }
 
         @Override
-        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
+        public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
             super.onCaptureCompleted(session, request, result);
             process(result);
         }
     };
     private CaptureRequest.Builder mCaptureRequestBuilder;
 
-    private Button mOpenGalleryButton;
     private ProgressBar mProgressBar;
-    private boolean mIsRecording = false;
 
     private File mImageFolder;
-    private String mImageFileName;
     private File mVideoFolder;
+    private String mImageFileName;
     private String mVideoFileName;
-    private CameraDevice.StateCallback mCameraDeviceStateCallBack = new CameraDevice.StateCallback() {
-        @Override
-        public void onOpened(CameraDevice camera) {
-            mCameraDevice = camera;
-            if (mIsRecording) {
-                try {
-                    createVideoFileName();
-                    mMediaRecorder.start();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                startRecord();
-                mMediaRecorder.start();
-//                mChronometer.setBase(SystemClock.elapsedRealtime());
-//                mChronometer.setVisibility(View.VISIBLE);
-//                mChronometer.start();
-            } else
-                startPreview();
-            //Toast.makeText(getApplicationContext(),"Connected To The Camera",Toast.LENGTH_SHORT).show();
-        }
-
-        @Override
-        public void onDisconnected(CameraDevice camera) {
-            camera.close();
-            mCameraDevice = null;
-        }
-
-        @Override
-        public void onError(CameraDevice camera, int error) {
-
-        }
-    };
 
     private HandlerThread mBackgroundHandlerThread;
     private Handler mBackgroundHandler;
@@ -278,8 +280,17 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
 
         mMediaRecorder = new MediaRecorder();
 
-        Button mCloseCamera = findViewById(R.id.closeCameraButton);
-        mCloseCamera.setOnClickListener(new View.OnClickListener() {
+        //create LOGI Folder in Device Storage
+        mLogiFolderName = "Logi";
+        File f = new File(Environment.getExternalStorageDirectory(), mLogiFolderName);
+        if (!f.exists()) {
+            boolean wasSuccessful = f.mkdirs();
+            if (wasSuccessful)
+                Toast.makeText(getApplicationContext(), "Logi Folder Created In Storage", Toast.LENGTH_SHORT).show();
+        }
+
+        Button closeCamera = findViewById(R.id.closeCameraButton);
+        closeCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 closeCamera();
@@ -287,16 +298,16 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
             }
         });
 
-        Button mSwitchCamera = findViewById(R.id.orientationButton);
-        mSwitchCamera.setOnClickListener(new View.OnClickListener() {
+        Button switchCamera = findViewById(R.id.orientationButton);
+        switchCamera.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 switchCamera();
             }
         });
 
-        Button mSwitchFlash = findViewById(R.id.flashButon);
-        mSwitchFlash.setOnClickListener(new View.OnClickListener() {
+        Button toggleFlash = findViewById(R.id.flashButon);
+        toggleFlash.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 switchFlash();
@@ -313,6 +324,7 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
             }
         });
         mProgressBar.setOnLongClickListener(new View.OnLongClickListener() {
+            @SuppressLint("ClickableViewAccessibility")
             @Override
             public boolean onLongClick(View v) {
                 try {
@@ -320,23 +332,22 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                         @Override
                         public boolean onTouch(View v, MotionEvent event) {
                             final long INTERVAL = 1000;
-                            final long TIMEOUT = 10000;
+                            final long TIMEOUT = 11000;
                             switch (event.getAction()) {
                                 case MotionEvent.ACTION_DOWN:
-                                    Log.i("ACTION_DOWN", "ACTION_DOWN::" + pause + " " + mIsRecording);
-                                    if (longClickActive == false) {
-                                        findViewById(R.id.thumbnailRecyclerView).setVisibility(View.INVISIBLE);
-                                        longClickActive = true;
-                                        startClickTime = Calendar.getInstance().getTimeInMillis();
+                                    Log.i("ACTION_DOWN", "ACTION_DOWN::" + mPause + " " + mIsRecording);
+                                    if (!mLongClickActive) {
+                                        mLongClickActive = true;
+                                        mStartClickTime = Calendar.getInstance().getTimeInMillis();
                                     }
                                     break;
                                 case MotionEvent.ACTION_MOVE:
-                                    if (longClickActive == true) {
-                                        long clickDuration = Calendar.getInstance().getTimeInMillis() - startClickTime;
+                                    if (mLongClickActive) {
+                                        long clickDuration = Calendar.getInstance().getTimeInMillis() - mStartClickTime;
                                         if (clickDuration >= MIN_CLICK_DURATION) {
-                                            longClickActive = false;
-                                            if (pause && !mIsRecording) {
-                                                pause = false;
+                                            mLongClickActive = false;
+                                            if (mPause && !mIsRecording) {
+                                                mPause = false;
                                                 // work on UiThread for better performance
                                                 runOnUiThread(new Runnable() {
                                                     public void run() {
@@ -348,31 +359,26 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                                                     }
                                                 });
 
-                                                recording = true;
-                                                TimerTask task = new TimerTask() {
+                                                TimerTask task1 = new TimerTask() {
                                                     @Override
                                                     public void run() {
-                                                        remaningSecs -= INTERVAL;
+                                                        mRemainingSecs -= INTERVAL;
 
-                                                        if (remaningSecs == 0) {
+                                                        if (mRemainingSecs == 0) {
                                                             this.cancel();
                                                             try {
                                                                 runOnUiThread(new Runnable() {
                                                                     @Override
                                                                     public void run() {
-                                                                        recording = false;
                                                                         mIsRecording = false;
                                                                         // release the MediaRecorder object
                                                                         mMediaRecorder.stop();
                                                                         mMediaRecorder.reset();
-
-                                                                        Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                                                                        mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mVideoFileName))); // uri of the file can use it to send t other activity
-                                                                        sendBroadcast(mediaStoreUpdateIntent);
+                                                                        updateVideoMediaStore();
 
                                                                         Intent fullScreenIntent = new Intent(getApplicationContext(), VideoPlayActivity.class);
-                                                                        if (getIntent().getExtras() != null)
-                                                                            fullScreenIntent.putExtra("chat","chatsActivity");
+                                                                        if (getIntent().getStringExtra(ChatsActivity.CHATS_ACTIVITY_CAMERA_EXTRA) != null)
+                                                                            fullScreenIntent.putExtra(ChatsActivity.CHATS_ACTIVITY_CAMERA_EXTRA, "chatsActivity");
                                                                         fullScreenIntent.setData(Uri.fromFile(new File(mVideoFileName)));
                                                                         startActivity(fullScreenIntent);
 
@@ -384,14 +390,15 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                                                             }
                                                             return;
                                                         }
-//                                                        elapsedSecs = remaningSecs;
-//                                                        mProgressBar.setProgress((int) (elapsedSecs / 1000));
-                                                        Log.i("TIME camera video", "Milli::" + (remaningSecs / 1000));
+
+                                                        mElapsedSeconds = mRemainingSecs;
+                                                        mProgressBar.setProgress((int) (mElapsedSeconds / 1000));
+                                                        Log.i("TIME camera video", "Milli::" + (mRemainingSecs / 1000));
 
                                                     }
                                                 };
-                                                timer = new Timer();
-                                                timer.scheduleAtFixedRate(task, INTERVAL, INTERVAL);
+                                                mTimer = new Timer();
+                                                mTimer.scheduleAtFixedRate(task1, INTERVAL, INTERVAL);
 
                                             } else {
                                                 // work on UiThread for better performance
@@ -404,30 +411,25 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                                                         }
                                                     }
                                                 });
-                                                recording = true;
-                                                TimerTask task = new TimerTask() {
+                                                TimerTask task2 = new TimerTask() {
                                                     @Override
                                                     public void run() {
-                                                        elapsed += INTERVAL;
-                                                        if (elapsed > TIMEOUT) {
+                                                        mElapsed += INTERVAL;
+                                                        if (mElapsed == TIMEOUT) {
                                                             this.cancel();
                                                             try {
                                                                 runOnUiThread(new Runnable() {
                                                                     @Override
                                                                     public void run() {
-                                                                        recording = false;
                                                                         mIsRecording = false;
                                                                         mMediaRecorder.stop();
                                                                         mMediaRecorder.reset(); // release the MediaRecorder object
                                                                         mProgressBar.setProgress(0);
-
-                                                                        Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                                                                        mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mVideoFileName))); // uri of the file can use it to send t other activity
-                                                                        sendBroadcast(mediaStoreUpdateIntent);
+                                                                        updateVideoMediaStore();
 
                                                                         Intent fullScreenIntent = new Intent(getApplicationContext(), VideoPlayActivity.class);
-                                                                        if (getIntent().getExtras() != null)
-                                                                            fullScreenIntent.putExtra("chat","chat");
+                                                                        if (getIntent().getStringExtra(ChatsActivity.CHATS_ACTIVITY_CAMERA_EXTRA) != null)
+                                                                            fullScreenIntent.putExtra(ChatsActivity.CHATS_ACTIVITY_CAMERA_EXTRA, "chatsActivity");
                                                                         fullScreenIntent.setData(Uri.fromFile(new File(mVideoFileName)));
                                                                         startActivity(fullScreenIntent);
 
@@ -441,39 +443,37 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                                                             }
                                                             return;
                                                         }
-                                                        elapsedSecs = 10000 - elapsed;
-                                                        //mProgressBar.setProgress((int) (elapsedSecs / 1000));
-                                                        Log.i("Time elapsed", "Milli::" + (elapsedSecs / 1000));
-                                                        remaningSecs = elapsedSecs;
-                                                        remaningSecs = Math.round(remaningSecs);
-                                                        elapsedSecs = Math.round(elapsedSecs);
+                                                        mElapsedSeconds = 10000 - mElapsed;
+                                                        mProgressBar.setProgress((int) (mElapsedSeconds / 1000));
+                                                        Log.i("Time mElapsed", "Milli::" + (mElapsedSeconds / 1000));
+                                                        mRemainingSecs = mElapsedSeconds;
+                                                        mRemainingSecs = Math.round(mRemainingSecs);
+                                                        mElapsedSeconds = Math.round(mElapsedSeconds);
                                                     }
                                                 };
-                                                timer = new Timer();
-                                                timer.scheduleAtFixedRate(task, INTERVAL, INTERVAL);
+                                                mTimer = new Timer();
+                                                mTimer.scheduleAtFixedRate(task2, INTERVAL, INTERVAL);
                                             }
                                         }
                                     }
                                     break;
                                 case MotionEvent.ACTION_UP:
-                                    Log.i("ACTION_UP", "ACTION_UP::" + recording);
-                                    longClickActive = false;
-                                    if (recording) {
+                                    Log.i("ACTION_UP", "ACTION_UP::" + mIsRecording);
+                                    mLongClickActive = false;
+                                    if (mIsRecording) {
                                         // stop recording and release camera
-                                        timer.cancel();
-                                        pause = true;
+                                        mProgressBar.setProgress((int) (mElapsedSeconds / 1000));
+                                        mTimer.cancel();
+                                        mPause = true;
                                         mIsRecording = false;
-                                        remaningSecs = remaningSecs + 1000;
+                                        mRemainingSecs = mRemainingSecs + 1000;
                                         mMediaRecorder.stop();
                                         mMediaRecorder.reset(); // release the MediaRecorder object
-
-                                        Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                                        mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mVideoFileName))); // uri of the file can use it to send t other activity
-                                        sendBroadcast(mediaStoreUpdateIntent);
+                                        updateVideoMediaStore();
 
                                         Intent fullScreenIntent = new Intent(getApplicationContext(), VideoPlayActivity.class);
-                                        if (getIntent().getExtras() != null)
-                                            fullScreenIntent.putExtra("chat","chat");
+                                        if (getIntent().getStringExtra(ChatsActivity.CHATS_ACTIVITY_CAMERA_EXTRA) != null)
+                                            fullScreenIntent.putExtra(ChatsActivity.CHATS_ACTIVITY_CAMERA_EXTRA, "chatsActivity");
                                         fullScreenIntent.setData(Uri.fromFile(new File(mVideoFileName)));
                                         startActivity(fullScreenIntent);
                                     }
@@ -491,52 +491,68 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
             }
         });
 
-        mOpenGalleryButton = findViewById(R.id.galleryButton);
-        mOpenGalleryButton.setOnClickListener(new View.OnClickListener() {
+        Button openGalleryButton = findViewById(R.id.galleryButton);
+        openGalleryButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 openGallery();
             }
         });
 
-        mThumbnailRecyclerView = findViewById(R.id.thumbnailRecyclerView);
+        RecyclerView thumbnailRecyclerView = findViewById(R.id.thumbnailRecyclerView);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
-        mThumbnailRecyclerView.setLayoutManager(linearLayoutManager);
+        thumbnailRecyclerView.setLayoutManager(linearLayoutManager);
         mMediaStoreAdapter = new MediaStoreAdapter(this);
-        mThumbnailRecyclerView.setAdapter(mMediaStoreAdapter);
+        thumbnailRecyclerView.setAdapter(mMediaStoreAdapter);
 
         checkReadExternalStoragePermission();
     }
 
+    private void updateVideoMediaStore() {
+        Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mVideoFileName))); // uri of the file can use it to send t other activity
+        sendBroadcast(mediaStoreUpdateIntent);
+    }
+
+    private void updateImageMediaStore() {
+        Intent mediaStoreUpdateIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        mediaStoreUpdateIntent.setData(Uri.fromFile(new File(mImageFileName))); // uri of the file can use it to send to other activity
+        sendBroadcast(mediaStoreUpdateIntent);
+    }
+
     private void setupCamera(int width, int height) {
         CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        mCameraId = cameraId;
         try {
-            CameraCharacteristics cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId);
+            CameraCharacteristics cameraCharacteristics = cameraManager.getCameraCharacteristics(mCameraId);
 
             //setup flash
             Boolean available = cameraCharacteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
-            isFlashSupported = available == null ? false : available;
+            mIsFlashSupported = available == null ? false : available;
             setupFlashButton();
 
             StreamConfigurationMap map = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             int deviceOrientation = getWindowManager().getDefaultDisplay().getRotation();
             mTotalRotation = sensorToDeviceRotation(cameraCharacteristics, deviceOrientation);
             boolean swapRotation = mTotalRotation == 90 || mTotalRotation == 270;
-            int rotatedWidth = width;
-            int rotatedHeight = height;
+            int rotatedWidth = width,
+                    rotatedHeight = height;
 
             if (swapRotation) {
                 rotatedHeight = width;
                 rotatedWidth = height;
             }
-            mPreviewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), rotatedWidth, rotatedHeight);
-            mVideoSize = chooseOptimalSize(map.getOutputSizes(MediaRecorder.class), rotatedWidth, rotatedHeight);
-            mImageSize = chooseOptimalSize(map.getOutputSizes(ImageFormat.JPEG), rotatedWidth, rotatedHeight);
-            mImageReader = ImageReader.newInstance(mImageSize.getWidth(), mImageSize.getHeight(), ImageFormat.JPEG, 1);
-            mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler);
-            mCameraId = cameraId;
+
+            if (map != null) {
+                mPreviewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), rotatedWidth, rotatedHeight);
+                mVideoSize = chooseOptimalSize(map.getOutputSizes(MediaRecorder.class), rotatedWidth, rotatedHeight);
+                mImageSize = chooseOptimalSize(map.getOutputSizes(ImageFormat.JPEG), rotatedWidth, rotatedHeight);
+                mImageReader = ImageReader.newInstance(mImageSize.getWidth(), mImageSize.getHeight(), ImageFormat.JPEG, 1);
+                mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler);
+            }
+
         } catch (CameraAccessException e) {
-            e.printStackTrace();
+            Toast.makeText(this, "Couldnt Setup Camera " + e.toString(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -544,18 +560,17 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
         CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
-                        PackageManager.PERMISSION_GRANTED) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED &&
+                        ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     cameraManager.openCamera(mCameraId, mCameraDeviceStateCallBack, mBackgroundHandler);
                 } else {
                     if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
-                        Toast.makeText(this, "Video App Requires Access To Camera", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "LOGI Requires Access To Camera", Toast.LENGTH_SHORT).show();
                     }
                     requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO}, REQUEST_CAMERA_PERMISSION_RESULT);
                 }
-            } else {
+            } else
                 cameraManager.openCamera(mCameraId, mCameraDeviceStateCallBack, mBackgroundHandler);
-            }
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -565,19 +580,19 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
         Button flashButton = findViewById(R.id.flashButon);
         try {
             if (cameraId.equals(CAMERA_BACK)) {
-                if (isFlashSupported) {
-                    if (isTorchOn) {
+                if (mIsFlashSupported) {
+                    if (mIsTorchOn) {
                         mCaptureRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
-                        mPreviewCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(), null, null);
+                        mPreviewCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(), null, mBackgroundHandler);
                         flashButton.setBackgroundColor(Color.GRAY);
-                        isTorchOn = false;
-                        flashButton.setBackground(getResources().getDrawable(R.drawable.flash_off));
+                        mIsTorchOn = false;
+                        flashButton.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.flash_off));
                     } else {
                         mCaptureRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH);
-                        mPreviewCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(), null, null);
+                        mPreviewCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(), null, mBackgroundHandler);
                         flashButton.setBackgroundColor(Color.WHITE);
-                        isTorchOn = true;
-                        flashButton.setBackground(getResources().getDrawable(R.drawable.flash_on));
+                        mIsTorchOn = true;
+                        flashButton.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.flash_on));
                     }
                 }
             }
@@ -589,13 +604,12 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
 
     public void setupFlashButton() {
         Button flashButton = findViewById(R.id.flashButon);
-        if (cameraId.equals(CAMERA_BACK) && isFlashSupported) {
+        if (cameraId.equals(CAMERA_BACK) && mIsFlashSupported) {
             flashButton.setVisibility(View.VISIBLE);
-
-            if (isTorchOn) {
-                flashButton.setBackground(getResources().getDrawable(R.drawable.flash_on));
+            if (mIsTorchOn) {
+                flashButton.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.flash_on));
             } else {
-                flashButton.setBackground(getResources().getDrawable(R.drawable.flash_off));
+                flashButton.setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.flash_off));
             }
 
         } else {
@@ -622,7 +636,7 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                 mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, recordSurface),
                         new CameraCaptureSession.StateCallback() {
                             @Override
-                            public void onConfigured(CameraCaptureSession session) {
+                            public void onConfigured(@NonNull CameraCaptureSession session) {
                                 try {
                                     session.setRepeatingRequest(
                                             mCaptureRequestBuilder.build(),
@@ -635,8 +649,8 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                             }
 
                             @Override
-                            public void onConfigureFailed(CameraCaptureSession session) {
-
+                            public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+                                Toast.makeText(CameraActivity.this, "StartRecord Camera Config Failed", Toast.LENGTH_SHORT).show();
                             }
                         }, null);
             } catch (CameraAccessException e) {
@@ -656,9 +670,9 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
             mCaptureRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             mCaptureRequestBuilder.addTarget(previewSurface);
 
-            mCameraDevice.createCaptureSession(Arrays.asList(previewSurface), new CameraCaptureSession.StateCallback() {
+            mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, mImageReader.getSurface()), new CameraCaptureSession.StateCallback() {
                 @Override
-                public void onConfigured(CameraCaptureSession session) {
+                public void onConfigured(@NonNull CameraCaptureSession session) {
                     mPreviewCaptureSession = session;
                     try {
                         mPreviewCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(),
@@ -670,8 +684,8 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                 }
 
                 @Override
-                public void onConfigureFailed(CameraCaptureSession session) {
-                    Toast.makeText(getApplicationContext(), "Unable To setup CameraPreview", Toast.LENGTH_SHORT).show();
+                public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+                    Toast.makeText(getApplicationContext(), "Unable To setup Camera Preview", Toast.LENGTH_SHORT).show();
                 }
             }, null);
         } catch (CameraAccessException e) {
@@ -687,7 +701,7 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
 
             CameraCaptureSession.CaptureCallback stillCaptureCallback = new CameraCaptureSession.CaptureCallback() {
                 @Override
-                public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request, long timestamp, long frameNumber) {
+                public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
                     try {
                         createImageFileName();
                     } catch (IOException e) {
@@ -705,8 +719,8 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
     private void openGallery() {
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("image/*");
-        startActivityForResult(Intent.createChooser(intent, "Select Picture"), REQUEST_GET_IMAGE_FROM_GALLERY);
+        intent.setType("video/* , image/*");
+        startActivityForResult(Intent.createChooser(intent, "Select Media"), REQUEST_MEDIA_FROM_GALLERY);
     }
 
 
@@ -738,38 +752,6 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
         }
     }
 
-    private void checkWriteExternalStoragePermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-                mIsRecording = true;
-                try {
-                    createVideoFileName();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                startRecord();
-                mMediaRecorder.start();
-            } else {
-                if (shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                    //
-                }
-                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, WRITE_EXTERNAL_STORAGE_PERMISSION_RESULT);
-            }
-
-        } else {
-            mIsRecording = true;
-            try {
-                createVideoFileName();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            startRecord();
-            mMediaRecorder.start();
-//            mChronometer.setBase(SystemClock.elapsedRealtime());
-//            mChronometer.setVisibility(View.VISIBLE);
-//            mChronometer.start();
-        }
-    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -777,7 +759,9 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
             case READ_EXTERNAL_STORAGE_PERMISSION_RESULT:
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     //call cursor loader
-                    getSupportLoaderManager().initLoader(MEDIASTORE_LOADER_ID, null, this);
+                    android.support.v4.app.LoaderManager.getInstance(this).initLoader(MEDIASTORE_LOADER_ID, null, this);
+                } else {
+                    Toast.makeText(getApplicationContext(), "Application Needs Read Storage Permission ", Toast.LENGTH_SHORT).show();
                 }
                 break;
             case REQUEST_CAMERA_PERMISSION_RESULT:
@@ -787,18 +771,24 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                 if (grantResults[1] != PackageManager.PERMISSION_GRANTED) {
                     Toast.makeText(getApplicationContext(), "Application Cant run without audio mic", Toast.LENGTH_SHORT).show();
                 }
+                break;
             case WRITE_EXTERNAL_STORAGE_PERMISSION_RESULT:
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     mIsRecording = true;
+                    findViewById(R.id.thumbnailRecyclerView).setVisibility(View.INVISIBLE);
                     try {
                         createVideoFileName();
                     } catch (IOException e) {
                         e.printStackTrace();
+                        Toast.makeText(this, "Failed To Create VideoFileName", Toast.LENGTH_SHORT).show();
                     }
+                    startRecord();
+                    mMediaRecorder.start();
+                    Toast.makeText(this, "Write External Storage Permission Granted", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(getApplicationContext(), "Application Needs To Save Video ", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(), "Application Needs To Save Media ", Toast.LENGTH_SHORT).show();
                 }
-
+                break;
             default:
                 super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
@@ -814,11 +804,12 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
                 MediaStore.Files.FileColumns.MEDIA_TYPE,
         };
 
-        String selection = MediaStore.Files.FileColumns.MEDIA_TYPE + "="
-                + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE
-                + " OR "
-                + MediaStore.Files.FileColumns.MEDIA_TYPE + "="
-                + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO;
+        String selection =
+                MediaStore.Files.FileColumns.MEDIA_TYPE + "="
+                        + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE
+                        + " OR "
+                        + MediaStore.Files.FileColumns.MEDIA_TYPE + "="
+                        + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO;
         return new CursorLoader(
                 this,
                 MediaStore.Files.getContentUri("external"),
@@ -830,8 +821,8 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
     }
 
     @Override
-    public void onLoadFinished(@NonNull Loader<Cursor> loader, Cursor cursor) {
-        mMediaStoreAdapter.changeCursor(cursor);
+    public void onLoadFinished(@NonNull Loader<Cursor> loader, Cursor data) {
+        mMediaStoreAdapter.changeCursor(data);
     }
 
     @Override
@@ -856,7 +847,6 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
     @Override
     protected void onPause() {
         closeCamera();
-
         stopBackgroundThread();
         super.onPause();
     }
@@ -869,9 +859,8 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
     }
 
     private void startBackgroundThread() {
-        mBackgroundHandlerThread = new HandlerThread("Camera2VideoImage");
+        mBackgroundHandlerThread = new HandlerThread("LogiCameraVideoImage");
         mBackgroundHandlerThread.start();
-
         mBackgroundHandler = new Handler(mBackgroundHandlerThread.getLooper());
     }
 
@@ -882,74 +871,117 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
             mBackgroundHandlerThread = null;
             mBackgroundHandler = null;
         } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
     private static int sensorToDeviceRotation(CameraCharacteristics cameraCharacteristics, int deviceOrientation) {
-        int sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
+        Integer sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         deviceOrientation = ORIENTATIONS.get(deviceOrientation);
-        return (sensorOrientation + deviceOrientation + 360) % 360;
+
+        return (sensorOrientation != null) ? (sensorOrientation + deviceOrientation + 360) % 360
+                : 0;
     }
 
     private static Size chooseOptimalSize(Size[] choices, int width, int height) {
-        List<Size> bigEnought = new ArrayList<Size>();
-        for (Size option : choices) {
-            if (option.getHeight() == option.getWidth() * height / width && option.getWidth() >= width && option.getHeight() >= height) { //aspect ration idk
-                bigEnought.add(option);
+        List<Size> bigEnough = new ArrayList<>();
+
+        for (Size option : choices)
+            if (option.getHeight() == option.getWidth() * height / width &&
+                    option.getWidth() >= width &&
+                    option.getHeight() >= height) { //aspect ration idk
+                bigEnough.add(option);
             }
-        }
-        if (bigEnought.size() > 0) {
-            return Collections.min(bigEnought, new CompareSizeByArea());
-        } else
+
+        if (bigEnough.size() > 0)
+            return Collections.min(bigEnough, new CompareSizeByArea()); //find minimum value in the bigEnough List
+        else
             return choices[0];
     }
 
     private void createVideoFolder() {
-        File movieFile = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
-        mVideoFolder = new File(movieFile, "GPS-1");
+        File movieFile = new File(Environment.getExternalStorageDirectory() + "/" + mLogiFolderName);
+        mVideoFolder = new File(movieFile, "Logi Videos");
         if (!mVideoFolder.exists()) {
-            mVideoFolder.mkdirs();
+            boolean wasSuccessful = mVideoFolder.mkdirs();
+            if (wasSuccessful)
+                Toast.makeText(getApplicationContext(), "Video Folder Created SuccessFully", Toast.LENGTH_SHORT).show();
         }
     }
 
-    private File createVideoFileName() throws IOException {
-        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+    private void createVideoFileName() throws IOException {
+        String timestamp = new SimpleDateFormat("dd/MM/yyyy_HH:mm:ss", Locale.getDefault()).format(new Date());
         String prepend = "VIDEO_" + timestamp + "_";
         File videoFile = File.createTempFile(prepend, ".mp4", mVideoFolder);
         mVideoFileName = videoFile.getAbsolutePath();
-        return videoFile;
     }
 
     private void createImageFolder() {
-        File imageFile = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-        mImageFolder = new File(imageFile, "GPS-1");
+        File imageFile = new File(Environment.getExternalStorageDirectory() + "/" + mLogiFolderName);
+        mImageFolder = new File(imageFile, "Logi Pictures");
         if (!mImageFolder.exists()) {
-            mImageFolder.mkdirs();
+            boolean wasSuccessful = mImageFolder.mkdirs();
+            if (wasSuccessful)
+                Toast.makeText(getApplicationContext(), "Image Folder Created SuccessFully", Toast.LENGTH_SHORT).show();
         }
     }
 
-    private File createImageFileName() throws IOException {
-        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+    private void createImageFileName() throws IOException {
+        String timestamp = new SimpleDateFormat("dd/MM/yyyy_HH:mm:ss", Locale.getDefault()).format(new Date());
         String prepend = "IMAGE_" + timestamp + "_";
         File imageFile = File.createTempFile(prepend, ".jpg", mImageFolder);
         mImageFileName = imageFile.getAbsolutePath();
-        return imageFile;
     }
 
     private void checkReadExternalStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
                 // start cursor loader
-                getSupportLoaderManager().initLoader(MEDIASTORE_LOADER_ID, null, this);
+                android.support.v4.app.LoaderManager.getInstance(this).initLoader(MEDIASTORE_LOADER_ID, null, this);
             } else {
-                if (shouldShowRequestPermissionRationale(android.Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                if (shouldShowRequestPermissionRationale(android.Manifest.permission.READ_EXTERNAL_STORAGE))
                     Toast.makeText(this, "App Needs To View Thumbnails", Toast.LENGTH_SHORT).show();
-                }
                 requestPermissions(new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE}, READ_EXTERNAL_STORAGE_PERMISSION_RESULT);
             }
 
         } else {
             // start cursor loader
+            android.support.v4.app.LoaderManager.getInstance(this).initLoader(MEDIASTORE_LOADER_ID, null, this);
+        }
+    }
+
+    private void checkWriteExternalStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED) {
+                mIsRecording = true;
+                findViewById(R.id.thumbnailRecyclerView).setVisibility(View.INVISIBLE);
+                try {
+                    createVideoFileName();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Toast.makeText(this, "Couldn't Create VideoFileName", Toast.LENGTH_SHORT).show();
+                }
+                startRecord();
+                mMediaRecorder.start();
+            } else {
+                if (shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                    Toast.makeText(this, "App Needs To Save Media in Storage", Toast.LENGTH_SHORT).show();
+                }
+                requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, WRITE_EXTERNAL_STORAGE_PERMISSION_RESULT);
+            }
+
+        } else {
+            mIsRecording = true;
+            findViewById(R.id.thumbnailRecyclerView).setVisibility(View.INVISIBLE);
+            try {
+                createVideoFileName();
+            } catch (IOException e) {
+                e.printStackTrace();
+                Toast.makeText(this, "Couldn't Create VideoFileName", Toast.LENGTH_SHORT).show();
+            }
+            startRecord();
+            mMediaRecorder.start();
         }
     }
 
@@ -1002,35 +1034,59 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
         String res = null;
         String[] proj = {MediaStore.Images.Media.DATA};
         Cursor cursor = getContentResolver().query(contentUri, proj, null, null, null);
-        if (cursor.moveToFirst()) {
+        if (cursor != null && cursor.moveToFirst()) {
             int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
             res = cursor.getString(column_index);
         }
-        cursor.close();
+        if (cursor != null)
+            cursor.close();
+
         return res;
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        try {
-            if (resultCode == RESULT_OK) {
-                if (requestCode == REQUEST_GET_IMAGE_FROM_GALLERY) {
-                    Uri selectedImageUri = data.getData();
-                    // Get the path from the Uri
-                    final String path = getPathFromURI(selectedImageUri);
-                    if (path != null) {
-                        File f = new File(path);
-                        selectedImageUri = Uri.fromFile(f);
+        Uri selectedMediaUri = data.getData();
+        switch (requestCode) {
+            case REQUEST_MEDIA_FROM_GALLERY:
+                if (resultCode == RESULT_OK) {
+                    ContentResolver cr = this.getContentResolver();
+                    if (selectedMediaUri != null) {
+                        if (Objects.requireNonNull(cr.getType(selectedMediaUri)).startsWith("image")) {
+                            // start intent to full screen image viewer
+                            Intent fullScreenIntent = new Intent(this, FullScreenImageActivity.class);
+                            if (getIntent().getExtras() != null)
+                                fullScreenIntent.putExtra("chat", "chat");
+                            fullScreenIntent.setData(selectedMediaUri);
+                            startActivity(fullScreenIntent);
+                        }
+                        if (Objects.requireNonNull(cr.getType(selectedMediaUri)).startsWith("video")) {
+                            //open video trimmer activity for activity get result
+                            startTrimActivity(selectedMediaUri);
+                        }
+
                     }
-                    // start intent to full screen image viewer
-                    Intent fullScreenIntent = new Intent(this, FullScreenImageActivity.class);
-                    fullScreenIntent.setData(selectedImageUri);
+                }
+                break;
+            case REQUEST_VIDEO_TRIMMER:
+                if (resultCode == RESULT_OK) {
+                    Uri videoUri = Uri.parse(data.getStringExtra("result"));
+                    Intent fullScreenIntent = new Intent(getApplicationContext(), VideoPlayActivity.class);
+                    if (getIntent().getExtras() != null)
+                        fullScreenIntent.putExtra("chat", "chat");
+                    fullScreenIntent.setData(videoUri);
                     startActivity(fullScreenIntent);
                 }
-            }
-        } catch (Exception e) {
-            Log.e("FileSelectorActivity", "File select error", e);
+
         }
+
     }
+
+    private void startTrimActivity(@NonNull Uri uri) {
+        Intent intent = new Intent(this, VideoTrimmerActivity.class);
+        intent.putExtra(EXTRA_VIDEO_PATH, getPathFromURI(uri));
+        startActivityForResult(intent, REQUEST_VIDEO_TRIMMER);
+    }
+
 }

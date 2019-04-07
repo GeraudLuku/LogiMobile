@@ -15,6 +15,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.geraud.android.gps1.Camera.FullScreenImageActivity;
 import com.geraud.android.gps1.Models.Chat;
 import com.geraud.android.gps1.Models.ChatInfo;
 import com.geraud.android.gps1.Models.User;
@@ -39,26 +40,22 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class TransferActivity extends AppCompatActivity {
     private static final int REQUEST_CODE = 1;
 
-    private RecyclerView mContactsRecyclerView;
-    private RecyclerView.Adapter mTransferRecyclerAdapter;
-    private RecyclerView.LayoutManager mTransferLayoutManager;
-
-    private RecyclerView mChatRecyclerView;
-    private RecyclerView.Adapter mChatListAdapter;
-    private RecyclerView.LayoutManager mChatListLayoutManager;
-
-    private Button mSendBtn;
+    private RecyclerView.Adapter mTransferRecyclerAdapter, mChatListAdapter;
 
     private List<User> mUserList = new ArrayList<>();
     private List<Chat> mChatList = new ArrayList<>();
     private List<ChatInfo> mChatInfo = new ArrayList<>();
+
     private List<Chat> mSelectedChats = new ArrayList<>();
+    private List<User> mSelectedUsers = new ArrayList<>();
 
     private String mDescription;
+    private String mUserPhone;
     private Uri mMediaUrl;
     private User mUserInfo;
 
@@ -67,10 +64,11 @@ public class TransferActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_transfer);
 
-        mDescription = getIntent().getStringExtra("text");
-        mMediaUrl = Uri.parse(getIntent().getStringExtra("uri"));
+        mDescription = getIntent().getStringExtra(FullScreenImageActivity.TEXT_EXTRA); // you can get it from either the VideoPlayActivity or FullScreenImageActivity its the same
+        mMediaUrl = Uri.parse(getIntent().getStringExtra(FullScreenImageActivity.URI_EXTRA));
+        mUserPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Cant Be Null").getPhoneNumber();
 
-        mSendBtn = findViewById(R.id.sendBtn);
+        Button mSendBtn = findViewById(R.id.sendBtn);
         mSendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -86,11 +84,11 @@ public class TransferActivity extends AppCompatActivity {
                 requestPermissions(new String[]{Manifest.permission.WRITE_CONTACTS, Manifest.permission.READ_CONTACTS}, REQUEST_CODE);
             } else
                 for (String contact : new Contacts(this).getAllContacts()) {
-                    getUsers(contact);
+                    getContacts(contact);
                     getUserChatList();
                 }
         //get current user Object
-        FirebaseDatabase.getInstance().getReference().child("USER").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).addListenerForSingleValueEvent(
+        FirebaseDatabase.getInstance().getReference().child("USER").child(mUserPhone).addListenerForSingleValueEvent(
                 new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
@@ -102,7 +100,7 @@ public class TransferActivity extends AppCompatActivity {
 
                     @Override
                     public void onCancelled(DatabaseError databaseError) {
-
+                        Toast.makeText(TransferActivity.this, "current user object ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
                     }
                 }
         );
@@ -110,27 +108,27 @@ public class TransferActivity extends AppCompatActivity {
     }
 
     private void initializeRecyclerView() {
-        mChatRecyclerView = findViewById(R.id.chats);
-        mChatRecyclerView.setNestedScrollingEnabled(false);
-        mChatRecyclerView.setHasFixedSize(false);
-        mChatRecyclerView.addItemDecoration(new DividerItemDecoration(mChatRecyclerView.getContext(), DividerItemDecoration.VERTICAL)); // list divider
-        mChatListLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false);
-        mChatRecyclerView.setLayoutManager(mChatListLayoutManager);
-        mChatListAdapter = new TransferChatRecyclerAdapter(mChatList, mChatInfo, getApplicationContext());
-        mChatRecyclerView.setAdapter(mChatListAdapter);
+        RecyclerView chatsRecyclerView = findViewById(R.id.chats);
+        chatsRecyclerView.setNestedScrollingEnabled(false);
+        chatsRecyclerView.setHasFixedSize(false);
+        chatsRecyclerView.addItemDecoration(new DividerItemDecoration(chatsRecyclerView.getContext(), DividerItemDecoration.VERTICAL)); // list divider
+        RecyclerView.LayoutManager chatListLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false);
+        chatsRecyclerView.setLayoutManager(chatListLayoutManager);
+        mChatListAdapter = new TransferChatRecyclerAdapter(mChatList, mChatInfo, getApplicationContext(),mUserPhone);
+        chatsRecyclerView.setAdapter(mChatListAdapter);
 
-        mContactsRecyclerView = findViewById(R.id.recyclerView);
-        mContactsRecyclerView.setNestedScrollingEnabled(false);
-        mContactsRecyclerView.setHasFixedSize(false);
-        mContactsRecyclerView.addItemDecoration(new DividerItemDecoration(mChatRecyclerView.getContext(), DividerItemDecoration.VERTICAL));
-        mTransferLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false);
-        mContactsRecyclerView.setLayoutManager(mTransferLayoutManager);
+        RecyclerView contactsRecyclerView = findViewById(R.id.recyclerView);
+        contactsRecyclerView.setNestedScrollingEnabled(false);
+        contactsRecyclerView.setHasFixedSize(false);
+        contactsRecyclerView.addItemDecoration(new DividerItemDecoration(chatsRecyclerView.getContext(), DividerItemDecoration.VERTICAL));
+        RecyclerView.LayoutManager contactsLayoutManager = new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false);
+        contactsRecyclerView.setLayoutManager(contactsLayoutManager);
         mTransferRecyclerAdapter = new TransferRecyclerAdapter(this, mUserList);
-        mContactsRecyclerView.setAdapter(mTransferRecyclerAdapter);
+        contactsRecyclerView.setAdapter(mTransferRecyclerAdapter);
     }
 
-    private void getUsers(String contact) {
-        DatabaseReference mUserDB = FirebaseDatabase.getInstance().getReference().child("USER");
+    private void getContacts(String contact) {
+        DatabaseReference mUserDB = FirebaseDatabase.getInstance().getReference().child("USER").child("userInfo");
         Query query = mUserDB.orderByChild("phone").equalTo(contact);
         query.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -146,13 +144,13 @@ public class TransferActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                Toast.makeText(TransferActivity.this, "getContacts ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void getUserChatList() {
-        DatabaseReference mUserChatDB = FirebaseDatabase.getInstance().getReference().child("USER").child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("chat");
+        DatabaseReference mUserChatDB = FirebaseDatabase.getInstance().getReference().child("USER").child(mUserPhone).child("chat");
         mUserChatDB.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -162,9 +160,9 @@ public class TransferActivity extends AppCompatActivity {
 
                         for (Chat mChatIterator : mChatList)   //method used not to duplicate chat ids in the chats activity
                             if (mChatIterator.getChatId().equals(mChat.getChatId()))
-                                continue; //stop here in the code and  goto next iteration in for loop
+                                //continue; //stop here in the code and  goto next iteration in for loop
 
-                        mChatList.add(mChat);
+                                mChatList.add(mChat);
                         getChatData(mChat.getChatId());
                     }
                 }
@@ -172,32 +170,34 @@ public class TransferActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                Toast.makeText(TransferActivity.this, "getUserChatList ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
 
     }
 
-    //thi is where you will get the info of all the chats including the destinator , last message and timestamp
+    //this is where you will get the info of all the chats including the destinator , last message and timestamp
     private void getChatData(String chatId) {
         DatabaseReference mChatDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(chatId).child("info");
         mChatDB.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
+                    ChatInfo chatInfo = dataSnapshot.getValue(ChatInfo.class);
+                    mChatInfo.add(chatInfo);
                     String chatId = "";
 
                     //getting id of the chat
                     if (dataSnapshot.child("id").getValue() != null)
-                        chatId = dataSnapshot.child("id").getValue().toString();
+                        chatId = Objects.requireNonNull(dataSnapshot.child("id").getValue(), "id can't Be Null").toString();
 
                     //getting all users
-                    for (DataSnapshot userSnaphshot : dataSnapshot.child("users").getChildren())
+                    for (DataSnapshot userSnapshot : dataSnapshot.child("users").getChildren())
                         for (Chat mChat : mChatList) {
                             if (mChat.getChatId().equals(chatId)) {
-                                User mUser = new User(userSnaphshot.getKey());
+                                User mUser = new User(userSnapshot.getKey());
                                 mChat.addUserToArrayList(mUser);
-                                getUserData(mUser, chatId);
+                                getUserData(mUser);
                             }
                         }
                 }
@@ -205,14 +205,14 @@ public class TransferActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-
+                Toast.makeText(TransferActivity.this, "getChatData ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
 
     }
 
-    private void getUserData(User mUser, final String chatId) {
-        DatabaseReference mUserDb = FirebaseDatabase.getInstance().getReference().child("USER").child(mUser.getPhone());
+    private void getUserData(User mUser) {
+        DatabaseReference mUserDb = FirebaseDatabase.getInstance().getReference().child("USER").child(mUser.getPhone()).child("userInfo");
         mUserDb.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -220,7 +220,7 @@ public class TransferActivity extends AppCompatActivity {
 
                 //getting notification key
                 if (dataSnapshot.child("notificationKey").getValue() != null)
-                    mUser.setNotificationKey(dataSnapshot.child("notificationKey").getValue().toString());
+                    mUser.setNotificationKey(Objects.requireNonNull(dataSnapshot.child("notificationKey").getValue(), "notification key can't be null").toString());
 
                 for (Chat mChat : mChatList) {
                     for (User mUserIt : mChat.getUserObjectArrayList()) {
@@ -229,47 +229,44 @@ public class TransferActivity extends AppCompatActivity {
                         }
                     }
                 }
-                //to put in the chatInfo object
-                getChatMetaData(chatId);
+                mChatListAdapter.notifyDataSetChanged();
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
+                Toast.makeText(TransferActivity.this, "getUserData ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void getChatMetaData(String chatId) {
-        DatabaseReference mChatInfoDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(chatId).child("info");
-        mChatInfoDB.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                        ChatInfo chatInfo = dc.getValue(ChatInfo.class);
-                        mChatInfo.add(chatInfo);
-                    }
-                    mChatListAdapter.notifyDataSetChanged();
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-
-    }
-
-    private int position = 0;
-    private void shareData() {
+    private List<Chat> getSelectedChats() {
         for (Chat chat : mChatList)
-            if (chat.getSelected()) {
+            if (chat.getSelected())
                 mSelectedChats.add(chat);
-                sendToChat(mSelectedChats.get(position));
-                position++;
-            }
+
+        return mSelectedChats;
     }
+
+    private List<User> getSelectedUsers() {
+        for (User user : mUserList)
+            if (user.getSelected())
+                mSelectedUsers.add(user);
+
+        return mSelectedUsers;
+    }
+
+    private void shareData() {
+        //send to chats first
+        for (Chat chat : getSelectedChats())
+            sendToChat(chat);
+
+        // send to selected contacts
+        for (User user : getSelectedUsers()) {
+            //check if chat exists
+            checkIfChatExists(user);
+        }
+    }
+
 
     private void sendToChat(final Chat chat) {
         //here get the uri data and send them to the user
@@ -279,10 +276,11 @@ public class TransferActivity extends AppCompatActivity {
         String messageId = mChatMessagesDb.push().getKey();
         final DatabaseReference newMessageDb = mChatMessagesDb.child(messageId);
 
-        final Map newMessageMap = new HashMap<>();
+        final HashMap<String,Object> newMessageMap = new HashMap<>();
 
         newMessageMap.put("text", mDescription);
-        newMessageMap.put("creator", FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber());
+        newMessageMap.put("creator", mUserPhone);
+        newMessageMap.put("timestamp", System.currentTimeMillis());
 
         final String mediaId = newMessageDb.child("media").push().getKey();
         final StorageReference filepath = FirebaseStorage.getInstance().getReference().child("CHAT").child(chat.getChatId()).child(messageId).child(mediaId);
@@ -308,32 +306,86 @@ public class TransferActivity extends AppCompatActivity {
         newMessageDb.updateChildren(newMessageMap);
 
         String message;
-        if (newMessageMap.get("text") != null) {
-            message = newMessageMap.get("text").toString();
+        if (mDescription != null) {
+            message = mDescription;
         } else
             message = "Sent Media";
 
-                for (User mUser : chat.getUserObjectArrayList())
-                    if (!mUser.getPhone().equals(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber())) {
-                        for (ChatInfo mChatInfo : mChatInfo)
-                            if (mChatInfo.getId().equals(chat.getChatId()))
-                                if (mChatInfo.getType().equals("single")) {
-                                    new SendNotification(
-                                            message,
-                                            mUserInfo.getName(),
-                                            mUser.getNotificationKey()
-                                    );
-                                } else if (mChatInfo.getType().equals("group")) {
-                                    new SendNotification(
-                                            String.format(" %s : %s ", mUserInfo.getName(), message),
-                                            mChatInfo.getName(),
-                                            mUser.getNotificationKey()
-                                    );
-                                }
+        for (User mUser : chat.getUserObjectArrayList())
+            if (!mUser.getPhone().equals(mUserPhone)) {
+                for (ChatInfo mChatInfo : mChatInfo)
+                    if (mChatInfo.getId().equals(chat.getChatId()))
+                        if (mChatInfo.getType().equals("single")) {
+                            new SendNotification(
+                                    message,
+                                    mUserInfo.getName(),
+                                    mUser.getNotificationKey()
+                            );
+                        } else if (mChatInfo.getType().equals("group")) {
+                            new SendNotification(
+                                    String.format(" %s : %s ", mUserInfo.getName(), message),
+                                    mChatInfo.getName(),
+                                    mUser.getNotificationKey()
+                            );
+                        }
 
-                    }
+            }
         //here also update the last message section in Info database
         chatInfoDB.child("lastMessage").setValue(newMessageMap);
+    }
+
+    private void checkIfChatExists(final User user) {
+        //check if the chat already exists
+        DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("USER").child("chat");
+        Query query = reference.orderByChild("user").equalTo(user.getPhone());
+        query.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists()) {
+                    Chat chat = dataSnapshot.getValue(Chat.class);
+                    if (chat != null)
+                        sendToChat(chat);
+                } else {
+                    //create a new chat
+                    String key = FirebaseDatabase.getInstance().getReference().child("CHAT").push().getKey();
+
+                    DatabaseReference userDB = FirebaseDatabase.getInstance().getReference().child("USER");
+                    DatabaseReference chatInfoDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(key).child("info");
+
+                    HashMap<String,Object> newMessageMap = new HashMap<>();
+                    newMessageMap.put("id", key);
+                    newMessageMap.put("lastMessage/", null); //set it to null because it will be updated just below
+                    newMessageMap.put("users/" + mUserPhone, true);
+                    newMessageMap.put("users/" + user.getPhone(), true);
+                    newMessageMap.put("name", null);
+                    newMessageMap.put("type", "single");
+                    newMessageMap.put("image", null);
+
+                    Map<String,Object> myChatMap = new HashMap<>();
+                    myChatMap.put("type", "single");
+                    myChatMap.put("user", user.getPhone());
+
+                    Map<String,Object> singleChatMap = new HashMap<>();
+                    singleChatMap.put("type", "single");
+                    singleChatMap.put("user", mUserPhone);
+
+                    //finally create the chat
+                    chatInfoDB.updateChildren(newMessageMap);
+                    userDB.child(mUserPhone).child("chat").child(key).setValue(myChatMap); //chat id set in my Document
+                    userDB.child(user.getPhone()).child("chat").child(key).setValue(singleChatMap); // set chat id in the other users document
+
+                    //open chatActivity for this newly created chat
+                    Chat chat = new Chat(key);
+                    sendToChat(chat);
+
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Toast.makeText(TransferActivity.this, "checkIfChatExists ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
@@ -349,7 +401,7 @@ public class TransferActivity extends AppCompatActivity {
 
                     if (writeContacts && readContacts) {
                         for (String contact : new Contacts(this).getAllContacts()) {
-                            getUsers(contact);
+                            getContacts(contact);
                             getUserChatList();
                         }
                         Toast.makeText(getApplicationContext(), "Contact Permission Granted", Toast.LENGTH_LONG).show();
