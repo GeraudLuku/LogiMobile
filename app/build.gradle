@@ -55,6 +55,8 @@ dependencies {
 
     implementation 'com.h6ah4i.android.widget.verticalseekbar:verticalseekbar:0.7.2'
 
+    implementation 'com.github.msayan:tutorial-view:v1.0.10'
+
     implementation 'com.danikula:videocache:2.7.1'
 
     implementation 'de.hdodenhof:circleimageview:2.2.0'

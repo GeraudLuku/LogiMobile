@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.location.Address;
 import android.location.Geocoder;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -59,6 +60,10 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder,  int position) {
 
+        // if its my place i can delete else i cant
+        if (mPlacesList.get(position).getCreator().equals(mPhone))
+            holder.mDeletePlace.setVisibility(View.VISIBLE);
+
         //get address of location
         try {
             Geocoder geocoder = new Geocoder(mContext, Locale.getDefault());
@@ -75,21 +80,18 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
         //creator of place
         mReferenceDB.child("USER").child(mPlacesList.get(position).getCreator()).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists())
                     for (DataSnapshot dc : dataSnapshot.getChildren())
-                        holder.mCreator.setText(String.format(Locale.getDefault(), " Creator : %s", Objects.requireNonNull(dc.child("name").getValue(), "Name Cant Be Null").toString()));
+                        holder.mCreator.setText(String.format(Locale.getDefault(), " Creator : %s",
+                                Objects.requireNonNull(dc.child("name").getValue(), "Name Cant Be Null").toString()));
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
+            public void onCancelled(@NonNull DatabaseError databaseError) {
                 Toast.makeText(mContext, "PlaceRecyclerAdapter ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
-
-        // if its my place i can delete else i cant
-        if (mPlacesList.get(position).getCreator().equals(mPhone))
-            holder.mDeletePlace.setVisibility(View.VISIBLE);
 
         // place image full screen onClick
         Glide.with(mContext).load(mPlacesList.get(position).getImage_uri())
@@ -120,17 +122,11 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
         holder.mDeletePlace.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Query query = mReferenceDB.child("PLACES").child(mPlacesList.get(holder.getAdapterPosition()).getCreator()).orderByChild("name").equalTo(mPlacesList.get(holder.getAdapterPosition()).getName());
-                query.addListenerForSingleValueEvent(new ValueEventListener() {
+                mReferenceDB.child("PLACE").child(mPlacesList.get(holder.getAdapterPosition()).getCreator()).child(mPlacesList.get(holder.getAdapterPosition()).getKey()).removeValue(new DatabaseReference.CompletionListener() {
                     @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        if (dataSnapshot.exists())
-                            dataSnapshot.getRef().removeValue();
-                    }
-
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                        Toast.makeText(mContext, "DeletePlace ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
+                    public void onComplete(@Nullable DatabaseError databaseError, @NonNull DatabaseReference databaseReference) {
+                        if (databaseError == null)
+                            Toast.makeText(mContext, "Place deleted successfully", Toast.LENGTH_SHORT).show();
                     }
                 });
             }

@@ -34,6 +34,7 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.Toolbar;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -85,13 +86,16 @@ import com.geraud.android.gps1.Utils.Contacts;
 import com.geraud.android.gps1.Utils.PlacesTypeToDrawable;
 import com.geraud.android.gps1.Utils.RandomStringGenerator;
 import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResponse;
 import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -113,6 +117,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -170,7 +175,7 @@ public class MapsActivity extends BaseActivity implements
     private DatabaseReference mSearchRef;
     private String USER_KEY;
 
-    private HeaderFragment StoryHeaderFragment;
+    public HeaderFragment StoryHeaderFragment;
     private BodyFragment StoryBodyFragment;
     private GoogleMap mMap;
 
@@ -179,32 +184,39 @@ public class MapsActivity extends BaseActivity implements
     private Gson mGson = new Gson();
 
     // The callback for the management of the user settings regarding location
-    private ResultCallback<LocationSettingsResult> mResultCallbackFromSettings = new ResultCallback<LocationSettingsResult>() {
+    public OnCompleteListener<LocationSettingsResponse> mResultCallbackFromSettings = new OnCompleteListener<LocationSettingsResponse>(){
         @Override
-        public void onResult(LocationSettingsResult result) {
-            Status status = result.getStatus();
-            String TAG = "gps";
-            switch (status.getStatusCode()) {
-                case LocationSettingsStatusCodes.SUCCESS:
-                    // All location settings are satisfied. The client can initialize location
-                    // requests here.
-                    break;
-                case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
-                    // Location settings are not satisfied. But could be fixed by showing the user
-                    // a dialog.
-                    try {
-                        // Show the dialog by calling startResolutionForResult(),
-                        // and check the result in onActivityResult().
-                        status.startResolutionForResult(
-                                MapsActivity.this,
-                                REQUEST_CHECK_SETTINGS);
-                    } catch (IntentSender.SendIntentException e) {
-                        // Ignore the error.
-                    }
-                    break;
-                case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
-                    Log.e(TAG, "Settings change unavailable. We have no way to fix the settings so we won't show the dialog.");
-                    break;
+        public void onComplete(@NonNull Task<LocationSettingsResponse> task) {
+            try {
+                LocationSettingsResponse response = task.getResult(ApiException.class);
+                // All location settings are satisfied. The client can initialize location
+                // requests here.
+                if (checkPermission())
+                    mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, INTERVAL, MIN_DISTANCE, mLocationListener);
+            } catch (ApiException exception) {
+                switch (exception.getStatusCode()) {
+                    case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                        // Location settings are not satisfied. But could be fixed by showing the
+                        // user a dialog.
+                        try {
+                            // Cast to a resolvable exception.
+                            ResolvableApiException resolvable = (ResolvableApiException) exception;
+                            // Show the dialog by calling startResolutionForResult(),
+                            // and check the result in onActivityResult().
+                            resolvable.startResolutionForResult(
+                                    MapsActivity.this,
+                                    REQUEST_CHECK_SETTINGS);
+                        } catch (IntentSender.SendIntentException e) {
+                            // Ignore the error.
+                        } catch (ClassCastException e) {
+                            // Ignore, should be an impossible error.
+                        }
+                        break;
+                    case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                        // Location settings are not satisfied. However, we have no way to fix the
+                        // settings so we won't show the dialog.
+                        break;
+                }
             }
         }
     };
@@ -234,6 +246,9 @@ public class MapsActivity extends BaseActivity implements
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
 
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance();
+        USER_KEY = Objects.requireNonNull(firebaseAuth.getCurrentUser(), "User Cannot Be Null").getPhoneNumber();
+
         //fragments
         StoryHeaderFragment = new HeaderFragment();
         StoryBodyFragment = new BodyFragment();
@@ -247,57 +262,56 @@ public class MapsActivity extends BaseActivity implements
         mStorageReference = FirebaseStorage.getInstance().getReference();
         mSearchRef = mDatabaseReference.child("PLACES"); //by default
 
-        FirebaseAuth mFirebaseAuth = FirebaseAuth.getInstance();
-        USER_KEY = Objects.requireNonNull(mFirebaseAuth.getCurrentUser(), "User Cannot Be Null").getPhoneNumber();
-
-
         //floating action buttons
-        FloatingActionButton mGetCurrentLocationBtn = findViewById(R.id.fab);
+        FloatingActionButton getCurrentLocationBtn = findViewById(R.id.fab);
         mCancelRouteBtn = findViewById(R.id.cancelRoute);
 
-        mGetCurrentLocationBtn.setOnClickListener(mFloatActionButtonClickListener);
+        getCurrentLocationBtn.setOnClickListener(mFloatActionButtonClickListener);
         mCancelRouteBtn.setOnClickListener(mFloatActionButtonClickListener);
 
         //bottom sheet menu buttons
         mProfilePicture = findViewById(R.id.bottomSheet_Image);
         mProfileName = findViewById(R.id.bottomSheet_Name);
 
-        LinearLayout mChatBtn = findViewById(R.id.chat);
-        LinearLayout mPlacesBtn = findViewById(R.id.places);
-        mChatBtn.setOnClickListener(mBottomViewClickListener);
-        mPlacesBtn.setOnClickListener(mBottomViewClickListener);
+        LinearLayout chatBtn = findViewById(R.id.chat);
+        LinearLayout placesBtn = findViewById(R.id.places);
+        ImageView refresh = findViewById(R.id.refreshContent);
 
-        Switch mShareLocation = findViewById(R.id.showLocation);
-        Switch mShowGeofences = findViewById(R.id.showGeofences);
-        mShareLocation.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        refresh.setOnClickListener(mBottomViewClickListener);
+        chatBtn.setOnClickListener(mBottomViewClickListener);
+        placesBtn.setOnClickListener(mBottomViewClickListener);
+
+        Switch shareLocation = findViewById(R.id.showLocation);
+        Switch showGeofences = findViewById(R.id.showGeofences);
+        shareLocation.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
                     // The toggle is enabled
                     TextView textView = findViewById(R.id.showLocationTxt);
-                    textView.setText(getString(R.string.hide_location));
+                    textView.setText(getString(R.string.share_location));
                     if (!checkPermission())
                         requestPermission();
-                    mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, INTERVAL, 1, mLocationListener);
+                    mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, INTERVAL, MIN_DISTANCE, mLocationListener);
                 } else {
                     // The toggle is disabled
                     TextView textView = findViewById(R.id.showLocationTxt);
-                    textView.setText(getString(R.string.share_location));
+                    textView.setText(getString(R.string.hide_location));
                     mLocationManager.removeUpdates(mLocationListener);
                     mGeoFire.removeLocation(USER_KEY);
                 }
             }
         });
-        mShowGeofences.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        showGeofences.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (isChecked) {
                     TextView textView = findViewById(R.id.showGeofencesTxt);
-                    textView.setText(getString(R.string.hide_geofences));
+                    textView.setText(getString(R.string.show_geofences));
                     mGeoBoundary.setVisible(true);
                 } else {
                     TextView textView = findViewById(R.id.showGeofencesTxt);
-                    textView.setText(getString(R.string.show_geofences));
+                    textView.setText(getString(R.string.hide_geofences));
                     mGeoBoundary.setVisible(false);
                 }
             }
@@ -310,13 +324,14 @@ public class MapsActivity extends BaseActivity implements
             @Override
             public void onClick(View v) {
                 createUserInfoDialog();
+                mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
             }
         });
 
 
         //listen constantly to changes in text to the editText
-        EditText mSearchBar = findViewById(R.id.search_text);
-        mSearchBar.addTextChangedListener(new TextWatcher() {
+        EditText searchBar = findViewById(R.id.search_text);
+        searchBar.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
                 //do nothing if there is no text in the edit Text
@@ -325,7 +340,6 @@ public class MapsActivity extends BaseActivity implements
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 //constantly search on each key stroke
-                Search(s.toString());
             }
 
             @Override
@@ -345,8 +359,8 @@ public class MapsActivity extends BaseActivity implements
                 mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
             }
         });
-        View mBottomSheet = findViewById(R.id.bottom_sheet1);
-        mBottomSheetBehavior = BottomSheetBehavior.from(mBottomSheet);
+        View bottomSheet = findViewById(R.id.bottom_sheet1);
+        mBottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
         mBottomSheetBehavior.setPeekHeight(mBottomPeekLayout.getHeight());
         mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
         mBottomSheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
@@ -435,28 +449,37 @@ public class MapsActivity extends BaseActivity implements
             }
         });
 
-
-        initialiseFragment();
-        if (mapFragment != null)
+        if (mapFragment != null) {
             mapFragment.getMapAsync(mMapReadyCallback);
+            initialiseFragments();
+            bindService(new Intent(getApplicationContext(), GeoQueries.class), mServiceConnection, BIND_AUTO_CREATE);
+            mServiceIsBound = true;
+        }
 
     }
 
-    private void initialiseFragment() {
+    private void initialiseFragments() {
         FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
+
         fragmentTransaction.add(R.id.story_header_fragment, StoryHeaderFragment);
         fragmentTransaction.add(R.id.story_body_fragment, StoryBodyFragment);
+
         fragmentTransaction.commit();
     }
 
     @Override
     public void onBackPressed() {
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
-        if (drawer.isDrawerOpen(GravityCompat.START)) {
-            drawer.closeDrawer(GravityCompat.START);
-        } else {
+        if (drawer.isDrawerOpen(GravityCompat.START))
+            drawer.closeDrawer(GravityCompat.START, true);
+        else {
             super.onBackPressed();
         }
+        if (mBottomSheetBehavior.getState() == BottomSheetBehavior.STATE_EXPANDED)
+            mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+        else
+            super.onBackPressed();
+
     }
 
     @Override
@@ -540,14 +563,14 @@ public class MapsActivity extends BaseActivity implements
                     break;
                 case R.id.updateInfo:
                     if (mModified) {
-                        if (!dUserName.getText().toString().equals(""))
+                        if (!TextUtils.isEmpty(dUserName.getText().toString()))
                             mUserInfoObject.setName(dUserName.getText().toString());
                         //upload image first
                         UploadTask uploadTask = mStorageReference.child("Profile Pictures").child(USER_KEY).child(USER_KEY + ".jpg").putFile(Uri.parse(mUserInfoObject.getImage_uri()));
                         uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                             @Override
                             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                                mUserInfoObject.setImage_uri(Objects.requireNonNull(taskSnapshot.getDownloadUrl(), "update Info downloadUri Cant Be Null").toString());
+                                mUserInfoObject.setImage_uri(Objects.requireNonNull(taskSnapshot.toString(), "update Info downloadUri Cant Be Null").toString());
                                 mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").setValue(mUserInfoObject).addOnCompleteListener(new OnCompleteListener<Void>() {
                                     @Override
                                     public void onComplete(@NonNull Task<Void> task) {
@@ -579,7 +602,7 @@ public class MapsActivity extends BaseActivity implements
 
     private void createUserInfoDialog() {
         //change user name and image
-        // will initialise the dialog here first work with the dailog variables
+        // will initialise the dialog here first work with the dialog variables
         mUserInfoDialog.setContentView(R.layout.user_settings);
 
 
@@ -630,7 +653,7 @@ public class MapsActivity extends BaseActivity implements
                         .setTitle("LogOut")
                         .setMessage("Are You Sure You Really Want To LogOut?")
                         .setCancelable(true)
-                        .setNegativeButton("LogOut", new DialogInterface.OnClickListener() {
+                        .setNegativeButton("Logout", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 LogOut();
@@ -648,7 +671,8 @@ public class MapsActivity extends BaseActivity implements
     }
 
 
-    private int INTERVAL = 1000;
+    private int INTERVAL = 60 * 1000; //1 minutes
+    private float MIN_DISTANCE = 100; //meters
     private LocationManager mLocationManager;
     //all related map actions take place here
     private OnMapReadyCallback mMapReadyCallback = new OnMapReadyCallback() {
@@ -658,26 +682,27 @@ public class MapsActivity extends BaseActivity implements
 
             //adaptive map function
             runOnUiThread(new Runnable() {
-                Calendar calendar = Calendar.getInstance();
-                int timeOfTheDay = calendar.get(Calendar.HOUR_OF_DAY);
+                int timeOfTheDay = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
 
                 @Override
                 public void run() {
-                    mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(getApplicationContext(),
-                            (timeOfTheDay >= 6 && timeOfTheDay < 17) ? R.raw.day_map : R.raw.night_map
-                    ));
+                    if (timeOfTheDay >= 6 && timeOfTheDay < 17) //if its day time
+                        mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(getApplicationContext(), R.raw.day_map));
+                    else
+                        mMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(getApplicationContext(), R.raw.night_map));
                 }
             });
 
-            LocationRequest mLocationRequest = LocationRequest.create();
-            mLocationRequest.setInterval(INTERVAL);
-            mLocationRequest.setFastestInterval(INTERVAL);
-            mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+            LocationRequest locationRequest = LocationRequest.create();
+            locationRequest.setInterval(INTERVAL);
+            locationRequest.setFastestInterval(INTERVAL);
+            locationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 
             mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
             getCurrentLocation();
-            LoadPlaces();
+            LoadPlaces(); //my places
+            loadPlace(); //friends places
             loadGeoFences();
             LoadFriends();
 
@@ -691,13 +716,13 @@ public class MapsActivity extends BaseActivity implements
             if (checkPermission()) {
                 buildGoogleApiClient();
                 mMap.setMyLocationEnabled(true);
-                mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, INTERVAL, 0, mLocationListener);
                 // Check the location settings of the user and create the callback to react to the different possibilities
                 LocationSettingsRequest.Builder locationSettingsRequestBuilder = new LocationSettingsRequest.Builder()
-                        .addLocationRequest(mLocationRequest);
-                PendingResult<LocationSettingsResult> result =
-                        LocationServices.SettingsApi.checkLocationSettings(mGoogleApiClient, locationSettingsRequestBuilder.build());
-                result.setResultCallback(mResultCallbackFromSettings);
+                        .addLocationRequest(locationRequest);
+                locationSettingsRequestBuilder.setAlwaysShow(true);
+                Task<LocationSettingsResponse> result =
+                        LocationServices.getSettingsClient(getApplicationContext()).checkLocationSettings(locationSettingsRequestBuilder.build());
+                result.addOnCompleteListener(mResultCallbackFromSettings);
             } else {
                 requestPermission();
             }
@@ -774,33 +799,18 @@ public class MapsActivity extends BaseActivity implements
 
     private void loadContacts() {
         //check if contacts permission was accepted
-        if (checkPermission()) {
+        if (checkPermission())
             mContactList = new Contacts(getApplicationContext()).getAllContacts();
-            bindService(new Intent(getApplicationContext(), GeoQueries.class), mServiceConnection, BIND_AUTO_CREATE);
-            mServiceIsBound = true;
-        } else
+        else
             requestPermission();
     }
 
-    private Location mLastLocation;
+    public Location mLastLocation;
     private GeoFire mGeoFire;
     private LocationListener mLocationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
             mLastLocation = location;
-
-//            //update marker on screen
-//            if (mUserMarker != null) mUserMarker.remove();
-//
-//            mUserMarker = mMap.addMarker(new MarkerOptions()
-//                    .position(latLng) //setting position
-//                    .draggable(false) //Making the marker non draggable
-//                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.rsz_personal_avatar)) //icon image here i am going to put the users bitmojii
-//                    .title("Me")); //Adding my name as title
-//
-//            mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-//            mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
-
             //update location in real-time Database
             mGeoFire.setLocation(USER_KEY, new GeoLocation(location.getLatitude(), location.getLongitude()));
         }
@@ -856,22 +866,22 @@ public class MapsActivity extends BaseActivity implements
             final Circle radius = circle;
             //if circle is clicked you can make the user choose to delete it or not.
             AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(getApplicationContext());
-            alertDialogBuilder.setMessage("Do you want to Delete this GeoFence?")
-                    .setNegativeButton("Delete", new DialogInterface.OnClickListener() {
+            alertDialogBuilder.setMessage("Do you want to Disable this GeoFence?")
+                    .setNegativeButton("Disable", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             //use co ordinates to delete it in firebase
-                            mDatabaseReference.child("GEOFENCES").child(USER_KEY)
+                            mDatabaseReference.child("GEOFENCE").child(USER_KEY)
                                     .child(String.valueOf(radius.getCenter().latitude + radius.getCenter().longitude))
                                     .addListenerForSingleValueEvent(new ValueEventListener() {
                                         @Override
-                                        public void onDataChange(DataSnapshot dataSnapshot) {
+                                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                                             if (dataSnapshot.exists())
                                                 dataSnapshot.getRef().removeValue();
                                         }
 
                                         @Override
-                                        public void onCancelled(DatabaseError databaseError) {
+                                        public void onCancelled(@NonNull DatabaseError databaseError) {
                                             Toast.makeText(getApplicationContext(), "Delete GeoFence ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
                                         }
                                     });
@@ -893,8 +903,6 @@ public class MapsActivity extends BaseActivity implements
             mMarkerClickLatLng = marker.getPosition();
             //get marker GSON object from the snippet
             mMarkerClickData = marker;
-            // store the marker also inside the tracking marker
-            mTracker = marker;
 
             switch (marker.getTitle()) {
                 case "user":
@@ -929,7 +937,7 @@ public class MapsActivity extends BaseActivity implements
                             //close the tracking
                             new AlertDialog.Builder(getApplicationContext())
                                     .setTitle("User Tracking")
-                                    .setMessage("Stop Tracking " + userInfo.getName() + "?")
+                                    .setMessage("Stop Tracking " + userInfo.getName() + " ?")
                                     .setCancelable(true)
                                     .setNegativeButton("Stop", new DialogInterface.OnClickListener() {
                                         @Override
@@ -966,7 +974,7 @@ public class MapsActivity extends BaseActivity implements
                     Query query = mDatabaseReference.child("USER").child("chat").orderByChild("user").equalTo(userInfo.getPhone());
                     query.addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
-                        public void onDataChange(DataSnapshot dataSnapshot) {
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                             if (dataSnapshot.exists()) {
                                 //if the chat already exists, open the chat in chat activity
                                 Chat mChat = new Chat(dataSnapshot.getKey());
@@ -976,6 +984,7 @@ public class MapsActivity extends BaseActivity implements
                                 //if it doesn't exist create a new chat then......
                                 String key = mDatabaseReference.child("CHAT").push().getKey();
                                 DatabaseReference userDB = mDatabaseReference.child("USER");
+                                assert key != null;
                                 DatabaseReference chatInfoDB = mDatabaseReference.child("CHAT").child(key).child("info");
                                 Message message = new Message(null, "Open to start chatting", null, System.currentTimeMillis(), null);
 
@@ -1005,7 +1014,7 @@ public class MapsActivity extends BaseActivity implements
                         }
 
                         @Override
-                        public void onCancelled(DatabaseError databaseError) {
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
                             Toast.makeText(getApplicationContext(), "ChatMenuBTN ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
                         }
                     });
@@ -1016,7 +1025,7 @@ public class MapsActivity extends BaseActivity implements
                 case R.id.callMenuBtn:
                     call(mMarkerClickData);
                 case R.id.trackMenuBtn:
-                    TrackMarker(mTracker);
+                    TrackMarker(mMarkerClickData);
 
             }
             return false;
@@ -1060,7 +1069,7 @@ public class MapsActivity extends BaseActivity implements
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
+            public void onCancelled(@NonNull DatabaseError databaseError) {
                 Toast.makeText(getApplicationContext(), "getChatData ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
@@ -1071,7 +1080,7 @@ public class MapsActivity extends BaseActivity implements
         DatabaseReference mUserDb = FirebaseDatabase.getInstance().getReference().child("USER").child(mUser.getPhone());
         mUserDb.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 User mUser = new User(dataSnapshot.getKey());
                 //getting notification key
                 if (dataSnapshot.child("notificationKey").getValue() != null)
@@ -1087,7 +1096,7 @@ public class MapsActivity extends BaseActivity implements
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
+            public void onCancelled(@NonNull DatabaseError databaseError) {
                 Toast.makeText(getApplicationContext(), "getUserData ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
@@ -1183,28 +1192,27 @@ public class MapsActivity extends BaseActivity implements
 
     private void goTO(LatLng latLng) {
 
-        if (latLng != null) {
+        if (latLng == null) return;
 
-            if (mSearchPolygon != null) {
-                mSearchPolygon.remove();
-                mSearchPolygon = null;
-            }
-
-            //Moving the camera
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-            //Animating the camera
-            mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
-            //update value on seekbar
-            mVerticalSeekBar.setProgress(15);
-
-            mSearchPolygonOptions.add(latLng);
-            mSearchPolygonOptions.strokeWidth(5);
-            mSearchPolygonOptions.strokeColor(ContextCompat.getColor(getApplicationContext(), R.color.light_sky_blue));
-            mSearchPolygonOptions.fillColor(ContextCompat.getColor(getApplicationContext(), R.color.yellow_green));
-
-            mSearchPolygon = mMap.addPolygon(mSearchPolygonOptions);
-
+        if (mSearchPolygon != null) {
+            mSearchPolygon.remove();
+            mSearchPolygon = null;
         }
+
+        //Moving the camera
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
+        //Animating the camera
+        mMap.animateCamera(CameraUpdateFactory.zoomTo(15));
+        //update value on seekbar
+        mVerticalSeekBar.setProgress(15);
+
+        mSearchPolygonOptions.add(latLng);
+        mSearchPolygonOptions.strokeWidth(5);
+        mSearchPolygonOptions.strokeColor(ContextCompat.getColor(getApplicationContext(), R.color.light_sky_blue));
+        mSearchPolygonOptions.fillColor(ContextCompat.getColor(getApplicationContext(), R.color.yellow_green));
+
+        mSearchPolygon = mMap.addPolygon(mSearchPolygonOptions);
+
     }
 
     private View.OnClickListener mBottomViewClickListener = new View.OnClickListener() {
@@ -1215,8 +1223,15 @@ public class MapsActivity extends BaseActivity implements
                     startActivity(new Intent(getApplicationContext(), ChatsActivity.class));
                     break;
                 case R.id.places:
+                    mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
                     Intent i = new Intent(getApplicationContext(), PlacesActivity.class);
+                    i.putStringArrayListExtra(PlacesActivity.CONTACT_LIST, (ArrayList<String>) mContactList);
                     startActivityForResult(i, PLACE_INTENT_REQUEST_CODE);
+                    break;
+                case R.id.refreshContent:
+                    loadContacts();
+                    loadPlace();
+                    mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
                     break;
             }
         }
@@ -1243,9 +1258,9 @@ public class MapsActivity extends BaseActivity implements
     private User mUserInfoObject;
 
     public void UserDetails() {
-        mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").addListenerForSingleValueEvent(new ValueEventListener() {
+        mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").addValueEventListener(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
                     for (DataSnapshot doc : dataSnapshot.getChildren()) {
                         mUserInfoObject = doc.getValue(User.class);
@@ -1260,7 +1275,7 @@ public class MapsActivity extends BaseActivity implements
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
+            public void onCancelled(@NonNull DatabaseError databaseError) {
                 Toasty.error(getApplicationContext(), "Failed to load your information", 3000).show();
             }
         });
@@ -1278,6 +1293,9 @@ public class MapsActivity extends BaseActivity implements
     @Override
     public void AddPlaceOnMap(final String name, final String description, final Uri imageUri, final String dec2) {
 
+        //key of place
+        final String key = mDatabaseReference.child("PLACE").child(USER_KEY).push().getKey();
+
         final StorageReference filePath = mStorageReference.child("Places Images").child(USER_KEY).child(RandomStringGenerator.randomString() + ".jpg");
         UploadTask uploadTask = filePath.putFile(Uri.parse(imageUri.toString()));
         uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
@@ -1286,16 +1304,14 @@ public class MapsActivity extends BaseActivity implements
                 filePath.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
                     @Override
                     public void onSuccess(Uri uri) {
-                        Place place = new Place(name, USER_KEY, description, uri.toString(), "place", mClickLatLng.latitude, mClickLatLng.longitude, dec2);
+                        Place place = new Place(key, name, USER_KEY, description, uri.toString(), "place", mClickLatLng.latitude, mClickLatLng.longitude, dec2);
                         //create a database entry for the new place
-                        mDatabaseReference.child("PLACES").child(USER_KEY).push().setValue(place).addOnCompleteListener(new OnCompleteListener<Void>() {
+                        mDatabaseReference.child("PLACE").child(USER_KEY).push().setValue(place).addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
-                                if (task.isSuccessful()) {
-                                    //if the place ws added successfully you want to reload the places on the map
-                                    LoadPlaces();
+                                if (task.isSuccessful())
                                     mClickLatLng = null;
-                                } else
+                                else
                                     Toast.makeText(getApplicationContext(), "couldn't create place", Toast.LENGTH_SHORT).show();
                             }
                         });
@@ -1306,62 +1322,81 @@ public class MapsActivity extends BaseActivity implements
     }
 
     private Marker mPlaces;
+    private Marker mFriendPlace;
 
     private void LoadPlaces() {
         if (mPlaces != null) mPlaces.remove();
 
         //load my places here before loading other peoples places
-        mDatabaseReference.child("PLACES").child(USER_KEY).addValueEventListener(new ValueEventListener() {
+        mDatabaseReference.child("PLACE").child(USER_KEY).addChildEventListener(new ChildEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists())
-                    for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                        Place myPlace = dc.getValue(Place.class);
-                        //create JSON object to send the info to infoWindow adapter through the snippet
-                        String PlaceJSON = mGson.toJson(myPlace);
-                        mPlaces = mMap.addMarker(new MarkerOptions()
-                                .position(new LatLng(myPlace != null ? myPlace.getLatitude() : 0, myPlace != null ? myPlace.getLongitude() : 0))
-                                .title(myPlace != null ? myPlace.getType() : null)
-                                .snippet(PlaceJSON)
-                                .icon(BitmapDescriptorFactory.fromResource(PlacesTypeToDrawable.getDrawable(myPlace != null ? myPlace.getDesc2() : null)))
-                                .draggable(false)
-                        );
-                    }
+            public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+//                for (DataSnapshot dc : dataSnapshot.getChildren()) {
+                Place myPlace = dataSnapshot.getValue(Place.class);
+                //create JSON object to send the info to infoWindow adapter through the snippet
+                String PlaceJSON = mGson.toJson(myPlace);
+                mPlaces = mMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(myPlace != null ? myPlace.getLatitude() : 0, myPlace != null ? myPlace.getLongitude() : 0))
+                        .title(myPlace != null ? myPlace.getType() : "place")
+                        .snippet(PlaceJSON)
+                        .icon(BitmapDescriptorFactory.fromResource(PlacesTypeToDrawable.getDrawable(myPlace != null ? myPlace.getDesc2() : null)))
+                        .draggable(false)
+                );
+                //}
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Toast.makeText(getApplicationContext(), "Places ValueEventListener-1 Cancelled", Toast.LENGTH_SHORT).show();
+            public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Toast.makeText(getApplicationContext(), "Places ChildEventListener-1 Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
 
+    }
+
+    private void loadPlace() {
+        if (mFriendPlace != null) mFriendPlace.remove();
         //now load my mContactList places also
         //for each friend
-        for (String contact : mContactList)
-            mDatabaseReference.child("PLACES").child(contact).addValueEventListener(new ValueEventListener() {
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
-                    if (dataSnapshot.exists())
-                        for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                            Place myPlace = dc.getValue(Place.class);
-                            //create JSON object to send the info to infoWindow adapter through the snippet
-                            String PlaceJSON = mGson.toJson(myPlace);
-                            mPlaces = mMap.addMarker(new MarkerOptions()
-                                    .position(new LatLng(myPlace != null ? myPlace.getLatitude() : 0, myPlace != null ? myPlace.getLongitude() : 0))
-                                    .title(myPlace != null ? myPlace.getType() : null)
-                                    .snippet(PlaceJSON)
-                                    .icon(BitmapDescriptorFactory.fromResource(PlacesTypeToDrawable.getDrawable(myPlace != null ? myPlace.getDesc2() : null)))
-                                    .draggable(false)
-                            );
-                        }
-                }
+        if (!mContactList.isEmpty())
+            for (String contact : mContactList)
+                mDatabaseReference.child("PLACE").child(contact).addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists())
+                            for (DataSnapshot dc : dataSnapshot.getChildren()) {
+                                Place myPlace = dc.getValue(Place.class);
+                                //create JSON object to send the info to infoWindow adapter through the snippet
+                                String PlaceJSON = mGson.toJson(myPlace);
+                                mFriendPlace = mMap.addMarker(new MarkerOptions()
+                                        .position(new LatLng(myPlace != null ? myPlace.getLatitude() : 0, myPlace != null ? myPlace.getLongitude() : 0))
+                                        .title(myPlace != null ? myPlace.getType() : "place")
+                                        .snippet(PlaceJSON)
+                                        .icon(BitmapDescriptorFactory.fromResource(PlacesTypeToDrawable.getDrawable(myPlace != null ? myPlace.getDesc2() : null)))
+                                        .draggable(false)
+                                );
+                            }
+                    }
 
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
-                    Toast.makeText(getApplicationContext(), "Places ValueEventListener-2 Cancelled", Toast.LENGTH_SHORT).show();
-                }
-            });
-
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                        Toast.makeText(getApplicationContext(), "Friends Places ValueEventListener-2 Cancelled", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private Timer mFriendsTimer;
@@ -1378,7 +1413,7 @@ public class MapsActivity extends BaseActivity implements
                         //first query the users section of the database to get the Contact information
                         mDatabaseReference.child("USER").child(contact).child("userInfo").addListenerForSingleValueEvent(new ValueEventListener() {
                             @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                                 if (dataSnapshot.exists()) {
                                     for (DataSnapshot dc : dataSnapshot.getChildren()) {
                                         final User user = dc.getValue(User.class);
@@ -1410,7 +1445,7 @@ public class MapsActivity extends BaseActivity implements
                             }
 
                             @Override
-                            public void onCancelled(DatabaseError databaseError) {
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
                                 Toast.makeText(getApplicationContext(), "Load ContactInfo ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
                             }
                         });
@@ -1424,7 +1459,7 @@ public class MapsActivity extends BaseActivity implements
         if (!mContactList.isEmpty()) {
             //start a timer to run after 1 second
             mFriendsTimer = new Timer();
-            mFriendsTimer.schedule(mLoadFriendsTimerTask, TimeUnit.MINUTES.toMillis(1));
+            mFriendsTimer.schedule(mLoadFriendsTimerTask, TimeUnit.MINUTES.toMillis(2));
 
         } else
             Toast.makeText(getApplicationContext(), "No contacts found", Toast.LENGTH_SHORT).show();
@@ -1435,7 +1470,8 @@ public class MapsActivity extends BaseActivity implements
         mFriendsTimer.purge();
     }
 
-    private Marker mTracker;
+    public Marker mTracker;
+    private User mTrackedUser;
     private Timer mTrackerTimer;
     private Boolean isTracking = false;
     private TimerTask mTrackFriendTimerTask = new TimerTask() {
@@ -1444,19 +1480,16 @@ public class MapsActivity extends BaseActivity implements
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    //get user info from the marker
-                    final User user = mGson.fromJson(mTracker.getSnippet(), User.class);
-                    mGeoFire.getLocation(user.getPhone(), new LocationCallback() {
+                    mGeoFire.getLocation(mTrackedUser.getPhone(), new LocationCallback() {
                         @Override
                         public void onLocationResult(String key, GeoLocation location) {
-                            if (location != null) {
-                                mTracker = mMap.addMarker(new MarkerOptions()
-                                        .position(new LatLng(location.latitude, location.longitude))
-                                        .title(user.getName())
-                                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.tracker_map_icon))
-                                        .draggable(false)
-                                );
-                            }
+                            if (location != null)
+                                //update the marker position
+                                mTracker.setPosition(new LatLng(location.latitude, location.longitude));
+                            //move camera
+                            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(mTracker.getPosition(), 15));
+                            //update value on seek bar
+                            mVerticalSeekBar.setProgress(15);
                         }
 
                         @Override
@@ -1471,9 +1504,20 @@ public class MapsActivity extends BaseActivity implements
 
     private void TrackMarker(Marker marker) {
         StopTracking();
+        //pause friends location updates
+        StopLoadFriends();
+        //remove the original marker that wants to be tracked
+        marker.setVisible(false);
+        //put the old marker instance in a new one and update the location
         mTracker = marker;
+        mTrackedUser = mGson.fromJson(mTracker.getSnippet(), User.class);
+        mTracker.setTitle("track");
+        mTracker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.tracker_map_icon));
+        //set visibility of the new instance since the old object was removed from the map
+        mTracker.setVisible(true);
+
         mTrackerTimer = new Timer();
-        mTrackerTimer.schedule(mTrackFriendTimerTask, TimeUnit.SECONDS.toMillis((long) .5));
+        mTrackerTimer.schedule(mTrackFriendTimerTask, TimeUnit.MINUTES.toMillis(6));
         isTracking = true;
     }
 
@@ -1484,14 +1528,18 @@ public class MapsActivity extends BaseActivity implements
             mTrackerTimer.purge();
             mTracker.remove();
             isTracking = false;
+
+            //start loading friends again
+            LoadFriends();
         }
     }
 
     //creating a geo coding boundary
     private void AddGeoBoundary() {
         //save geofence in Realtime Databse for Future use
-        GeoFence geoFence = new GeoFence(mClickLatLng.latitude, mClickLatLng.longitude);
-        mDatabaseReference.child("GEOFENCES").child(USER_KEY).child(String.valueOf(mClickLatLng.latitude + mClickLatLng.longitude)).setValue(geoFence).addOnCompleteListener(new OnCompleteListener<Void>() {
+        String key = mDatabaseReference.child("GEOFENCE").child(USER_KEY).push().getKey();
+        GeoFence geoFence = new GeoFence(mClickLatLng.latitude, mClickLatLng.longitude, key);
+        mDatabaseReference.child("GEOFENCE").child(USER_KEY).child(String.valueOf(geoFence.getLatitude() + geoFence.getLongitude())).setValue(geoFence).addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {
                 if (task.isSuccessful()) {
@@ -1512,60 +1560,99 @@ public class MapsActivity extends BaseActivity implements
 
     private void loadGeoFences() {
         mGeoLocationsList = new ArrayList<>();
-        mDatabaseReference.child("GEOFENCES").child(USER_KEY).addListenerForSingleValueEvent(new ValueEventListener() {
+        mDatabaseReference.child("GEOFENCE").child(USER_KEY).addChildEventListener(new ChildEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    if (mGeoBoundary != null)
-                        mGeoBoundary.remove();
-                    for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                        GeoFence geoFence = dc.getValue(GeoFence.class);
-                        //save the location in the list of geoLoctions to be used in a service for query
-                        LatLng latLng = new LatLng(geoFence != null ? geoFence.getLatitude() : 0, geoFence != null ? geoFence.getLongitude() : 0);
-                        mGeoLocationsList.add(latLng);
-                        mGeoBoundary = mMap.addCircle(new CircleOptions()
-                                .center(latLng)
-                                .radius(600)
-                                .strokeColor(ContextCompat.getColor(getApplicationContext(), R.color.light_sky_blue))
-                                .fillColor(ContextCompat.getColor(getApplicationContext(), R.color.sky_blue))
-                                .strokeWidth(4.0f)
-                        );
-                        numGeofences++;
-                    }
-                }
+            public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                GeoFence geoFence = dataSnapshot.getValue(GeoFence.class);
+                //save the location in the list of geoLocations to be used in a service for query
+                LatLng latLng = new LatLng(geoFence != null ? geoFence.getLatitude() : 0, geoFence != null ? geoFence.getLongitude() : 0);
+                mGeoLocationsList.add(latLng);
+                mGeoBoundary = mMap.addCircle(new CircleOptions()
+                        .center(latLng)
+                        .radius(600)
+                        .strokeColor(ContextCompat.getColor(getApplicationContext(), R.color.light_sky_blue))
+                        .fillColor(ContextCompat.getColor(getApplicationContext(), R.color.sky_blue))
+                        .strokeWidth(4.0f)
+                );
+                numGeofences++;
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
+            public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
                 Toast.makeText(getApplicationContext(), "Geofences ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
+
         //after all the geofences are loaded, start the queries listener service
-        mGeoQueriesService.query(getApplicationContext(), mGeoLocationsList, mContactList);
+        mGeoQueriesService.query(mGeoLocationsList, mContactList);
+
+//        mDatabaseReference.child("GEOFENCES").child(USER_KEY).addListenerForSingleValueEvent(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(DataSnapshot dataSnapshot) {
+//                if (dataSnapshot.exists()) {
+//                    if (mGeoBoundary != null)
+//                        mGeoBoundary.remove();
+//                    for (DataSnapshot dc : dataSnapshot.getChildren()) {
+//                        GeoFence geoFence = dc.getValue(GeoFence.class);
+//                        //save the location in the list of geoLoctions to be used in a service for query
+//                        LatLng latLng = new LatLng(geoFence != null ? geoFence.getLatitude() : 0, geoFence != null ? geoFence.getLongitude() : 0);
+//                        mGeoLocationsList.add(latLng);
+//                        mGeoBoundary = mMap.addCircle(new CircleOptions()
+//                                .center(latLng)
+//                                .radius(600)
+//                                .strokeColor(ContextCompat.getColor(getApplicationContext(), R.color.light_sky_blue))
+//                                .fillColor(ContextCompat.getColor(getApplicationContext(), R.color.sky_blue))
+//                                .strokeWidth(4.0f)
+//                        );
+//                        numGeofences++;
+//                    }
+//                }
+//            }
+//
+//            @Override
+//            public void onCancelled(DatabaseError databaseError) {
+//                Toast.makeText(getApplicationContext(), "Geofences ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
+//            }
+//        });
     }
 
     private void creatorWindow() {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getApplicationContext());
         LayoutInflater mLayoutInflater = this.getLayoutInflater();
-        View mDialogView = mLayoutInflater.inflate(R.layout.creator_window, null);
-        builder.setView(mDialogView);
+        View dialogView = mLayoutInflater.inflate(R.layout.creator_window, null);
+        builder.setView(dialogView);
 
+        //disable geo fence option if user has reached limit
+        if (numGeofences == 2)
+            dialogView.findViewById(R.id.addGeo).setClickable(false);
         //if add place to map
-        mDialogView.findViewById(R.id.addPlaceToMap).setOnClickListener(new View.OnClickListener() {
+        dialogView.findViewById(R.id.addPlaceToMap).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 OpenAddPlace();
             }
         });
         //if add geo boundary
-        mDialogView.findViewById(R.id.addGeo).setOnClickListener(new View.OnClickListener() {
+        dialogView.findViewById(R.id.addGeo).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (numGeofences < 6) {
-                    AddGeoBoundary();
-                } else
-                    Toast.makeText(getApplicationContext(), "Geofence creation exceeded (MAX=5)", Toast.LENGTH_SHORT).show();
+                AddGeoBoundary();
             }
         });
 
@@ -1580,23 +1667,22 @@ public class MapsActivity extends BaseActivity implements
                 .endAt(text + "\uf8ff")
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
                         if (dataSnapshot.exists()) {
 
                             for (DataSnapshot dc : dataSnapshot.getChildren()) {
 
                                 try {
-                                    //if the datasnapshot can enter the user object
+                                    //if the data snapshot can enter the user object
                                     User user = dc.getValue(User.class);
                                     //getting location with/from geofire
                                     if (user != null)
                                         mGeoFire.getLocation(user.getPhone(), new LocationCallback() {
                                             @Override
                                             public void onLocationResult(String key, GeoLocation location) {
-                                                if (location != null) {
+                                                if (location != null)
                                                     goTO(new LatLng(location.latitude, location.longitude));
-                                                }
                                             }
 
                                             @Override
@@ -1615,12 +1701,12 @@ public class MapsActivity extends BaseActivity implements
                             }
 
                         } else
-                            Toast.makeText(getApplicationContext(), text + " - Searched doesn't exist", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getApplicationContext(), text + " - doesn't exist", Toast.LENGTH_SHORT).show();
 
                     }
 
                     @Override
-                    public void onCancelled(DatabaseError databaseError) {
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
 
                     }
                 });
@@ -1629,9 +1715,20 @@ public class MapsActivity extends BaseActivity implements
     //make user online
     private void makeUserOnline() {
         //update Realtime Database status value
-        mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").child("status").setValue(0);
+        mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").child("status").setValue(0).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                findViewById(R.id.DatabaseConnectionStatus).setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.online));
+            }
+        });
+
         // Adding on disconnect hook
-        mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").child("status").onDisconnect().setValue(1);
+        mDatabaseReference.child("USER").child(USER_KEY).child("userInfo").child("status").onDisconnect().setValue(1).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                findViewById(R.id.DatabaseConnectionStatus).setBackground(ContextCompat.getDrawable(getApplicationContext(), R.drawable.offline));
+            }
+        });
     }
 
     //make user offline
@@ -1663,6 +1760,18 @@ public class MapsActivity extends BaseActivity implements
             double latitude = data.getDoubleExtra("latitude", 0);
             double longitude = data.getDoubleExtra("longitude", 0);
             goTO(new LatLng(latitude, longitude));
+        }
+
+        if (requestCode == REQUEST_CHECK_SETTINGS) {
+            if (resultCode == Activity.RESULT_OK) {
+                // All required changes were successfully made
+                if (checkPermission())
+                    mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, INTERVAL, MIN_DISTANCE, mLocationListener);
+                Toast.makeText(getApplicationContext(), "Thanks for Enabling Location!", Toast.LENGTH_SHORT).show();
+            } else {
+                // The user was asked to change settings, but chose not to
+                Toast.makeText(getApplicationContext(), "But your contacts wont be able to get location updates", Toast.LENGTH_SHORT).show();
+            }
         }
 
         if (requestCode == PLACE_INTENT_REQUEST_CODE) {
@@ -1711,7 +1820,7 @@ public class MapsActivity extends BaseActivity implements
 
         @Override
         public void onRoutingSuccess(ArrayList<Route> route, int shortestRouteIndex) {
-            //hide toolbar  to make space for the snakbar
+            //hide toolbar  to make space for the snackbar
             Objects.requireNonNull(getSupportActionBar(), "Action Bar Cannot Be Null").hide();
 
             if (mPolyLines.size() > 0)
@@ -1722,14 +1831,14 @@ public class MapsActivity extends BaseActivity implements
             //add route(s) to the map.
             for (int i = 0; i < route.size(); i++) {
                 PolylineOptions polyLineOptions = new PolylineOptions();
-                polyLineOptions.color(ContextCompat.getColor(getApplicationContext(), R.color.blue));
+                polyLineOptions.color(ContextCompat.getColor(getApplicationContext(), R.color.colorPrimaryDark));
                 polyLineOptions.width(10 + i * 3);
                 polyLineOptions.addAll(route.get(i).getPoints());
                 Polyline polyline = mMap.addPolyline(polyLineOptions);
                 mPolyLines.add(polyline);
             }
 
-            //mSnackBar to show distance and time to cover it
+            //mSnackBar to show distance and time to cover distance
             mSnackBar = TSnackbar
                     .make(findViewById(R.id.mainWindow), String.format(Locale.getDefault(), "Distance -[ %d ] ~~ Duration -[ %d ]",
                             route.get(shortestRouteIndex).getDistanceValue(),
@@ -1751,6 +1860,8 @@ public class MapsActivity extends BaseActivity implements
         @Override
         public void onRoutingCancelled() {
             Toast.makeText(getApplicationContext(), "Routing was cancelled", Toast.LENGTH_SHORT).show();
+            //show tool bar
+            Objects.requireNonNull(getSupportActionBar(), "Action Bar Cannot Be Null").show();
         }
     };
 

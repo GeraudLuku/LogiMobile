@@ -4,6 +4,7 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
+import android.support.annotation.NonNull;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -194,27 +195,27 @@ public class SinchService extends Service {
         public void onIncomingCall(CallClient callClient, final Call call) {
             Log.d(TAG, "Incoming call");
             //look for the users info in the database
-            mDatabase.child("USER").child(call.getCallId()).addListenerForSingleValueEvent(new ValueEventListener() {
+            mDatabase.child("USER").child(call.getCallId()).child("userInfo").addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     if (dataSnapshot.exists()) {
                         for (DataSnapshot dc : dataSnapshot.getChildren()) {
                             //if the info of the user was successfully found in the database you can now proceed normally
                             User remoteUser = dc.getValue(User.class);
                             if (remoteUser != null) {
-                                Intent intent = new Intent(SinchService.this, IncomingCallScreenActivity.class);
-                                intent.putExtra(CALL_ID, call.getCallId());
-                                intent.putExtra(CALL_NAME, remoteUser.getName());
-                                intent.putExtra(CALL_IMAGE, remoteUser.getImage_uri());
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                SinchService.this.startActivity(intent);
+                                Intent incomingCallActivity = new Intent(SinchService.this, IncomingCallScreenActivity.class);
+                                incomingCallActivity.putExtra(CALL_ID, call.getCallId());
+                                incomingCallActivity.putExtra(CALL_NAME, remoteUser.getName());
+                                incomingCallActivity.putExtra(CALL_IMAGE, remoteUser.getImage_uri());
+                                incomingCallActivity.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                SinchService.this.startActivity(incomingCallActivity);
                             }
                         }
                     }
                 }
 
                 @Override
-                public void onCancelled(DatabaseError databaseError) {
+                public void onCancelled(@NonNull DatabaseError databaseError) {
                     Toast.makeText(getApplicationContext(), "Incoming Call ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
                 }
             });

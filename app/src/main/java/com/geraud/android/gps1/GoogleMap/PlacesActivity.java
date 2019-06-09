@@ -30,40 +30,31 @@ import java.util.List;
 import java.util.Objects;
 
 public class PlacesActivity extends AppCompatActivity {
+    public static final String CONTACT_LIST = "contacts";
 
-    private static final int REQUEST_PERMISSION_CODE = 1;
     private RecyclerView.Adapter mPlaceAdapter;
 
-    private DatabaseReference mDatabaseReference = FirebaseDatabase.getInstance().getReference();
-    private String mPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Cannot Be Null").getPhoneNumber();
+    private DatabaseReference mDatabaseReference;
+    private String mPhone;
 
-    private RadioGroup mRadioGroup;
+    public RadioGroup mRadioGroup;
 
     private List<Place> mPlaces;
-    private List<String> mContactList;
+    private ArrayList<String> mContactList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_places);
 
+        //get contacts list from intent
+        mContactList = getIntent().getStringArrayListExtra(CONTACT_LIST);
+
         mRadioGroup = findViewById(R.id.radioGroup);
+        mDatabaseReference = FirebaseDatabase.getInstance().getReference();
+        mPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Cannot Be Null").getPhoneNumber();
 
         initializeRecyclerView();
-    }
-
-    public boolean checkPermission() {
-        return ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
-
-    }
-
-    private void requestPermission() {
-
-        ActivityCompat.requestPermissions(PlacesActivity.this, new String[]
-                {
-                        Manifest.permission.READ_CONTACTS
-                }, REQUEST_PERMISSION_CODE);
-
     }
 
     private void initializeRecyclerView() {
@@ -85,10 +76,7 @@ public class PlacesActivity extends AppCompatActivity {
                 LoadPlaces();
                 break;
             case R.id.radio_two:
-                if (checkPermission()) {
                     LoadFriendsPlaces();
-                }else
-                    requestPermission();
                 break;
             default:
                 Toast.makeText(getApplicationContext(), "Cant Recognise Radio Option Selected", Toast.LENGTH_SHORT).show();
@@ -99,9 +87,9 @@ public class PlacesActivity extends AppCompatActivity {
     private void LoadPlaces() {
         mPlaces.clear(); // clear list
         mPlaceAdapter.notifyDataSetChanged(); // let your adapter know about the changes and reload view.
-        mDatabaseReference.child("PLACES").child(mPhone).addValueEventListener(new ValueEventListener() {
+        mDatabaseReference.child("PLACE").child(mPhone).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists())
                     for (DataSnapshot dc : dataSnapshot.getChildren()) {
                         Place myPlace = dc.getValue(Place.class);
@@ -111,7 +99,7 @@ public class PlacesActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
+            public void onCancelled(@NonNull DatabaseError databaseError) {
                 Toast.makeText(getApplicationContext(), "Places ValueEventListener-1 Cancelled", Toast.LENGTH_SHORT).show();
             }
         });
@@ -122,9 +110,9 @@ public class PlacesActivity extends AppCompatActivity {
         mPlaceAdapter.notifyDataSetChanged(); // let your adapter know about the changes and reload view.
         //for each friend
         for (String contact : mContactList)
-            mDatabaseReference.child("PLACES").child(contact).addValueEventListener(new ValueEventListener() {
+            mDatabaseReference.child("PLACE").child(contact).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     if (dataSnapshot.exists())
                         for (DataSnapshot dc : dataSnapshot.getChildren()) {
                             Place myPlace = dc.getValue(Place.class);
@@ -134,28 +122,10 @@ public class PlacesActivity extends AppCompatActivity {
                 }
 
                 @Override
-                public void onCancelled(DatabaseError databaseError) {
+                public void onCancelled(@NonNull DatabaseError databaseError) {
                     Toast.makeText(getApplicationContext(), "Places ValueEventListener-2 Cancelled", Toast.LENGTH_SHORT).show();
                 }
             });
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
-        switch (requestCode) {
-
-            case REQUEST_PERMISSION_CODE:
-                boolean readContacts = grantResults[0] == PackageManager.PERMISSION_GRANTED;
-                if (readContacts) {
-                    if (checkPermission()) {
-                        mContactList = new Contacts(getApplicationContext()).getAllContacts();
-                    }
-                    Toast.makeText(PlacesActivity.this, "Contacts Permission Granted", Toast.LENGTH_LONG).show();
-                } else {
-                    Toast.makeText(PlacesActivity.this, "Contacts Permission Denied Cant Load COntacts Location", Toast.LENGTH_LONG).show();
-
-                }
-                break;
-        }
-    }
 }

@@ -52,14 +52,15 @@ public class CallScreenActivity extends BaseActivity {
         mCallerName = findViewById(R.id.remoteUserName);
         mCallerImage = findViewById(R.id.remoteUserImage);
         mCallState = findViewById(R.id.callState);
-        Button endCallButton = findViewById(R.id.hangupButton);
 
+        Button endCallButton = findViewById(R.id.hangupButton);
         endCallButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 endCall();
             }
         });
+
         mCallStart = System.currentTimeMillis();
         mCallId = getIntent().getStringExtra(SinchService.CALL_ID);
         mCallName = getIntent().getStringExtra(SinchService.CALL_NAME);

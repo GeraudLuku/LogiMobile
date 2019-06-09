@@ -4,6 +4,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.ContactsContract;
+import android.support.annotation.NonNull;
 import android.telephony.TelephonyManager;
 import android.widget.Toast;
 
@@ -79,13 +80,13 @@ public class Contacts {
         Query query = mUserDatabaseReference.orderByChild("phone").equalTo(phone);
         query.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists())
                     mContacts.add(phone);
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
+            public void onCancelled(@NonNull DatabaseError databaseError) {
                 Toast.makeText(mContext, "CheckIfUsesApp ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
             }
         });

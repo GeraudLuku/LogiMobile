@@ -8,8 +8,11 @@ public class Place {
     private String name, creator, description, image_uri, type, desc2;
     private double latitude, longitude;
 
+    private String key;
 
-    public Place(String name, String creator, String description, String image_uri, String type, double latitude, double longitude, String des2) {
+
+    public Place(String key,String name, String creator, String description, String image_uri, String type, double latitude, double longitude, String des2) {
+        this.key = key;
         this.name = name;
         this.creator = creator;
         this.description = description;
@@ -82,5 +85,13 @@ public class Place {
 
     public void setLongitude(double longitude) {
         this.longitude = longitude;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
     }
 }

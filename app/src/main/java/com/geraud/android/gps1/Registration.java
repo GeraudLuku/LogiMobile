@@ -2,6 +2,7 @@ package com.geraud.android.gps1;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Toast;
 
@@ -24,6 +25,7 @@ import java.util.Objects;
 import es.dmoral.toasty.Toasty;
 
 public class Registration extends AppCompatActivity {
+
     private static final int RC_SIGN_IN = 123;
     private DatabaseReference mDatabaseReference;
 
@@ -66,7 +68,7 @@ public class Registration extends AppCompatActivity {
                 if (phoneNumber != null) {
                     mDatabaseReference.child(phoneNumber).child("userInfo").addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
-                        public void onDataChange(DataSnapshot dataSnapshot) {
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                             if (dataSnapshot.exists())
                                 startActivity(new Intent(getApplicationContext(), MapsActivity.class));
                             else
@@ -74,7 +76,7 @@ public class Registration extends AppCompatActivity {
                         }
 
                         @Override
-                        public void onCancelled(DatabaseError databaseError) {
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
                             Toast.makeText(Registration.this, "Registration ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
                         }
                     });
@@ -91,7 +93,7 @@ public class Registration extends AppCompatActivity {
                     Toasty.error(getApplicationContext(), "NO Network, Check Internet Connection", Toast.LENGTH_SHORT, true).show();
 
                 if (Objects.requireNonNull(response.getError()).getErrorCode() == ErrorCodes.UNKNOWN_ERROR)
-                    Toasty.error(getApplicationContext(), "An Unknown Error Occured", Toast.LENGTH_SHORT, true).show();
+                    Toasty.error(getApplicationContext(), "An Unknown Error Occurred", Toast.LENGTH_SHORT, true).show();
 
             }
 

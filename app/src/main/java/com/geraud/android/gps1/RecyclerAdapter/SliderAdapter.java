@@ -34,14 +34,16 @@ public class SliderAdapter extends PagerAdapter {
             "Chat",
             "Privacy",
             "Adaptive Maps",
-            "Discover & Add Locations"
+            "Discover & Add Locations",
+            "Be a Customer"
     };
     private String[] descriptions = {
             "Get access to real-time location of all available friends and also locations of areas around you",
             "Send messages to your friends using our well optimised cloud messaging system",
             "We got your back on the moments you will like to disappear from the radar",
-            "The maps contrast automatically adapts to your environment to improve your vision",
-            "Don't just watch default locations you can create custom locations on the map and share with your friends"
+            "The map's contrast automatically adapts to your environment to improve your vision",
+            "Don't just watch default locations you can create custom locations on the map and share with your friends",
+            "Receive and chose to subscribe to businesses around you to receive promotion updates from them"
     };
 
     @Override
