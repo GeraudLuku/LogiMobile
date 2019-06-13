@@ -58,7 +58,7 @@ public class VideoPlayActivity extends AppCompatActivity implements
     private Uri mVideoUri;
     private String mUserPhone;
 
-    private boolean location = false;
+    private boolean mLocationAllowed = false;
     private double mLatitude = 0;
     private double mLongitude = 0;
 
@@ -84,8 +84,8 @@ public class VideoPlayActivity extends AppCompatActivity implements
         mDescriptionEditText = findViewById(R.id.descriptionEditText);
         mUserPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Cant Be Null").getPhoneNumber();
         if (mUserPhone != null) {
-            mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORIES").child(mUserPhone);
-            mStorageReference = FirebaseStorage.getInstance().getReference().child("STORIES").child(mUserPhone);
+            mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORY").child(mUserPhone);
+            mStorageReference = FirebaseStorage.getInstance().getReference().child("STORY").child(mUserPhone);
         }
 
         mSurfaceView = findViewById(R.id.videoSurfaceView);
@@ -109,19 +109,19 @@ public class VideoPlayActivity extends AppCompatActivity implements
         postbutton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (getIntent().getExtras() != null) {
-                    Intent transferIntent = new Intent(getApplicationContext(), TransferActivity.class);
-                    transferIntent.putExtra(URI_EXTRA, mVideoUri);
-                    transferIntent.putExtra(TEXT_EXTRA, mDescriptionEditText.getText().toString());
-                    startActivity(transferIntent);
-                    finish();
-                } else
+//                if (getIntent().getExtras() != null) {
+//                    Intent transferIntent = new Intent(getApplicationContext(), TransferActivity.class);
+//                    transferIntent.putExtra(URI_EXTRA, mVideoUri);
+//                    transferIntent.putExtra(TEXT_EXTRA, mDescriptionEditText.getText().toString());
+//                    startActivity(transferIntent);
+//                    finish();
+//                } else
                     new AlertDialog.Builder(getApplicationContext())
-                            .setMessage("Share Location Of Of This Activity?")
+                            .setMessage("Share Location Of This Status?")
                             .setPositiveButton("Share", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
-                                    location = true;
+                                    mLocationAllowed = true;
                                 }
                             })
                             .setNegativeButton("No, Please", null)
@@ -137,20 +137,21 @@ public class VideoPlayActivity extends AppCompatActivity implements
 
     private void postStatus() {
         mDescription = mDescriptionEditText.getText().toString();
-        //even if location was allowed by user, if there is no LatLng available then set location to false
+        //even if mLocationAllowed was allowed by user, if there is no LatLng available then set mLocationAllowed to false
         if (mLatitude == 0 && mLongitude == 0)
-            location = false;
+            mLocationAllowed = false;
 
-        StorageReference filepath = mStorageReference.child(RandomStringGenerator.randomString() + ".jpg");
+        final StorageReference filepath = mStorageReference.child(RandomStringGenerator.randomString() + ".jpg");
         UploadTask uploadTask = filepath.putFile(mVideoUri);
         uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
             @Override
             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                String downloadUrl = Objects.requireNonNull(taskSnapshot.getDownloadUrl(), "Download Url Can't Be Null").toString();
-                Stories stories = new Stories(location, downloadUrl,
+                String downloadUrl = Objects.requireNonNull(filepath.getDownloadUrl(), "Download Url Can't Be Null").toString();
+                Stories story = new Stories(mLocationAllowed, downloadUrl,
                         mDescription, System.currentTimeMillis(), mLatitude, mLongitude, "video",
                         mUserPhone);
-                mDatabaseReference.push().setValue(stories).addOnCompleteListener(new OnCompleteListener<Void>() {
+                story.setKey(mDatabaseReference.push().getKey());
+                mDatabaseReference.push().setValue(story).addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
                         if (task.isSuccessful()) {

@@ -1770,7 +1770,7 @@ public class MapsActivity extends BaseActivity implements
                 Toast.makeText(getApplicationContext(), "Thanks for Enabling Location!", Toast.LENGTH_SHORT).show();
             } else {
                 // The user was asked to change settings, but chose not to
-                Toast.makeText(getApplicationContext(), "But your contacts wont be able to get location updates", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "Keep in mind your contacts wont be able to get location updates", Toast.LENGTH_SHORT).show();
             }
         }
 

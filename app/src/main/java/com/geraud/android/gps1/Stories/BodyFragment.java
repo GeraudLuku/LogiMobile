@@ -39,7 +39,6 @@ public class BodyFragment extends Fragment {
     private StoriesRecyclerAdapter mStoriesRecyclerView;
 
     private Stories mStories;
-    private Stories mStory;
 
     private Context mContext;
 
@@ -52,53 +51,54 @@ public class BodyFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        View view = inflater.inflate(R.layout.fragment_body, container, false);
+        View view = inflater.inflate(R.layout.fragment_body, container, true);
         mContext = getContext();
 
         mContacts = new Contacts(mContext);
 
         mStories = new Stories();
-        mStory = new Stories();
         mStoriesList = new ArrayList<>();
+
+        mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORY");
+
         mStoriesRecyclerView = new StoriesRecyclerAdapter(mStoriesList, getContext());
-
-        mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORIES");
-
         RecyclerView mRecyclerView = view.findViewById(R.id.story_body_recycler);
         mRecyclerView.setAdapter(mStoriesRecyclerView);
         mRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
         //cycle via all mContactList and get their mStories with a childEventListener
-        if (checkPermission()) {
-            for (String contact : mContacts.getAllContacts()) {
-                mDatabaseReference.child(contact).addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        if (dataSnapshot.exists()) {
-                            for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                                mStory = dc.getValue(Stories.class);
-                                mStories.addStoryToArray(mStory);
-                            }
-                            mStoriesList.add(mStories);
-                            mStoriesRecyclerView.notifyDataSetChanged();
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                        Toast.makeText(mContext, "BodyStories ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        } else
+        if (checkPermission())
+            loadStories();
+        else
             requestPermission();
 
 
         return view;
     }
 
-    private boolean checkPermission() {
+    private void loadStories() {
+        for (String contact : mContacts.getAllContacts())
+            mDatabaseReference.child(contact).addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        for (DataSnapshot dc : dataSnapshot.getChildren())
+                            mStories.addStoryToArray(dc.getValue(Stories.class));
 
+                        mStoriesList.add(mStories);
+                        mStoriesRecyclerView.notifyDataSetChanged();
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                    Toast.makeText(mContext, "BodyStories ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
+                }
+            });
+    }
+
+
+    private boolean checkPermission() {
         return ActivityCompat.checkSelfPermission(mContext, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED;
     }
 
@@ -110,29 +110,8 @@ public class BodyFragment extends Fragment {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode) {
             case REQUEST_CODE:
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    for (String contact : mContacts.getAllContacts()) {
-                        mDatabaseReference.child(contact).addValueEventListener(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                if (dataSnapshot.exists()) {
-                                    for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                                        mStory = dc.getValue(Stories.class);
-                                        mStories.addStoryToArray(mStory);
-                                    }
-                                    mStoriesList.add(mStories);
-                                    mStoriesRecyclerView.notifyDataSetChanged();
-                                }
-                            }
-
-                            @Override
-                            public void onCancelled(DatabaseError databaseError) {
-                                Toast.makeText(mContext, "BodyStories ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                        Toast.makeText(mContext, "Contact permission Granted", Toast.LENGTH_SHORT).show();
-                    }
-                }
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED)
+                    loadStories();
         }
 
     }

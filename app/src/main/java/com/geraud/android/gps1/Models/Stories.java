@@ -11,6 +11,8 @@ public class Stories implements Serializable {
     private String type;
     private String phone;
 
+    private String key;
+
 
     private ArrayList<Stories> storyObjectArrayList = new ArrayList<>();
 
@@ -93,6 +95,13 @@ public class Stories implements Serializable {
         this.type = type;
     }
 
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
 
     public void addStoryToArray(Stories story) {
         storyObjectArrayList.add(story);

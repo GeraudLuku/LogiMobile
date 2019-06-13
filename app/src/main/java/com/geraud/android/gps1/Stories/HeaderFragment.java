@@ -22,6 +22,9 @@ import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.geraud.android.gps1.Camera.CameraActivity;
+import com.geraud.android.gps1.Camera.FullScreenImageActivity;
+import com.geraud.android.gps1.Camera.VideoPlayActivity;
+import com.geraud.android.gps1.Camera.VideoTrimmerActivity;
 import com.geraud.android.gps1.Models.Stories;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.Utils.TimeAgo;
@@ -31,7 +34,6 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 
 import java.util.Objects;
 
@@ -40,9 +42,10 @@ import static android.app.Activity.RESULT_OK;
 
 public class HeaderFragment extends Fragment {
 
-    static final int REQUEST_VIDEO_CAPTURE = 1;
-    static final int REQUEST_IMAGE_CAPTURE = 2;
-    static final int REQUEST_CHOSE_GALLERY = 3;
+    public static final int REQUEST_VIDEO_CAPTURE = 1;
+    public static final int REQUEST_IMAGE_CAPTURE = 2;
+    public static final int REQUEST_CHOSE_GALLERY = 3;
+    public static final int REQUEST_VIDEO_TRIMMER = 4;
 
     private ImageView mImageView;
     private TextView mTextSnippet;
@@ -75,6 +78,7 @@ public class HeaderFragment extends Fragment {
             public void onClick(View v) {
                 //new Intent(mContext,CameraActivity.class);
                 //instead make a camera intent to get either a video or a picture to avoid complicated things
+                selectImage(mContext);
 
             }
         });
@@ -93,6 +97,9 @@ public class HeaderFragment extends Fragment {
                                     .into(mImageView);
                         } catch (Exception e) {
                             Toast.makeText(mContext, "Exception - " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            Glide.with(mContext)
+                                    .load(R.drawable.movies) //load video default background
+                                    .into(mImageView);
                         }
                         mTextSnippet.setText(TimeAgo.getTimeAgo(story.getTimestamp()));
                     }
@@ -177,18 +184,40 @@ public class HeaderFragment extends Fragment {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
             Bundle extras = intent.getExtras(); assert extras != null;
             Bitmap imageBitmap = (Bitmap) extras.get("data"); // this is the thumbnail its kinda low quality
+            //send to fullscreen image activity
+            //convert bitmap to uri
+            Intent imageIntent = new Intent(mContext, FullScreenImageActivity.class);
+            imageIntent.setData(Uri.parse(""));
+
         }
         if (requestCode == REQUEST_VIDEO_CAPTURE && resultCode == RESULT_OK) {
             Uri videoUri = intent.getData();
+            Intent videoIntent = new Intent(mContext, VideoPlayActivity.class);
+            videoIntent.setData(videoUri);
         }
         if (requestCode == REQUEST_CHOSE_GALLERY && resultCode == RESULT_OK) {
             Uri selectedMediaUri = intent.getData(); assert selectedMediaUri != null;
             if (selectedMediaUri.toString().contains("image")) {
                 //handle image
+                Intent imageIntent = new Intent(mContext, FullScreenImageActivity.class);
+                imageIntent.setData(selectedMediaUri);
             } else  if (selectedMediaUri.toString().contains("video")) {
                 //handle video
                 //send video for size trimming activity
+                startTrimActivity(selectedMediaUri);
             }
         }
+        if (requestCode == REQUEST_VIDEO_TRIMMER && resultCode == RESULT_OK){
+            Uri videoUri = Uri.parse(intent.getStringExtra("result"));
+            //send video
+            Intent videoIntent = new Intent(mContext, VideoPlayActivity.class);
+            videoIntent.setData(videoUri);
+        }
+    }
+
+    private void startTrimActivity(@NonNull Uri uri) {
+        Intent intent = new Intent(mContext, VideoTrimmerActivity.class);
+        intent.putExtra(CameraActivity.EXTRA_VIDEO_PATH, uri);
+        startActivityForResult(intent, REQUEST_VIDEO_TRIMMER);
     }
 }

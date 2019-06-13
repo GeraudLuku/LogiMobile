@@ -74,7 +74,7 @@ public class CameraActivity extends AppCompatActivity implements LoaderManager.L
 
     private final static int READ_EXTERNAL_STORAGE_PERMISSION_RESULT = 0;
     private final static int WRITE_EXTERNAL_STORAGE_PERMISSION_RESULT = 1;
-    private static final int REQUEST_VIDEO_TRIMMER = 11;
+    public static final int REQUEST_VIDEO_TRIMMER = 11;
     public static final String EXTRA_VIDEO_PATH = "video";
     private final static int REQUEST_CAMERA_PERMISSION_RESULT = 2;
     private final static int REQUEST_MEDIA_FROM_GALLERY = 3;

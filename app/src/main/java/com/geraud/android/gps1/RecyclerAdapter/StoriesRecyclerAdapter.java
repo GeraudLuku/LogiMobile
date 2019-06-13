@@ -54,7 +54,7 @@ public class StoriesRecyclerAdapter extends RecyclerView.Adapter<StoriesRecycler
         mDatabaseReference.child(mStoriesList.get(position).getStoryObjectArrayList().get(mStoriesList.get(position).getCount() - 1).getPhone()).child("userInfo")
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         if (dataSnapshot.exists()) {
                             for (DataSnapshot dc : dataSnapshot.getChildren()) {
                                 User user = dc.getValue(User.class);
@@ -65,7 +65,7 @@ public class StoriesRecyclerAdapter extends RecyclerView.Adapter<StoriesRecycler
                     }
 
                     @Override
-                    public void onCancelled(DatabaseError databaseError) {
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
                         Toast.makeText(mContext, "StoriesRecyclerAdapter ValueEvent Cancelled", Toast.LENGTH_SHORT).show();
                     }
                 });

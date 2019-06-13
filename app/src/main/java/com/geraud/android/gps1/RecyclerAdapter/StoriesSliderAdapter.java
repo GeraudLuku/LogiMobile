@@ -79,7 +79,7 @@ public class StoriesSliderAdapter extends PagerAdapter implements CacheListener 
 
     private HttpProxyCacheServer getProxy() {
         return new HttpProxyCacheServer.Builder(mContext)
-                .maxCacheSize(15360)       // 5 Gb for cache 1GB = 3072
+                .maxCacheSize(6144)       // 2 Gb for cache 1GB = 3072
                 .build();
     }
 

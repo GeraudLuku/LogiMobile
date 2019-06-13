@@ -20,8 +20,6 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
-import com.geraud.android.gps1.Chat.ChatsActivity;
-import com.geraud.android.gps1.Chat.TransferActivity;
 import com.geraud.android.gps1.Models.Stories;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.Utils.RandomStringGenerator;
@@ -38,8 +36,8 @@ import com.google.firebase.storage.UploadTask;
 import java.util.Objects;
 
 public class FullScreenImageActivity extends AppCompatActivity {
-    public static final String URI_EXTRA = "uri";
-    public static final String TEXT_EXTRA = "text";
+//    public static final String URI_EXTRA = "uri";
+//    public static final String TEXT_EXTRA = "text";
     private static final int REQUEST_PERMISSION = 0;
 
     private EditText mDescriptionInput;
@@ -53,7 +51,7 @@ public class FullScreenImageActivity extends AppCompatActivity {
     private LocationManager mLocationManager;
     private Location mLocation;
 
-    private boolean location = false;
+    private boolean mLocationAllowed = false;
     private double mLatitude = 0;
     private double mLongitude = 0;
 
@@ -82,8 +80,8 @@ public class FullScreenImageActivity extends AppCompatActivity {
 
         mUserPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Cant Be Null").getPhoneNumber();
         if (mUserPhone != null) {
-            mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORIES").child(mUserPhone);
-            mStorageReference = FirebaseStorage.getInstance().getReference().child("STORIES").child(mUserPhone);
+            mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORY").child(mUserPhone);
+            mStorageReference = FirebaseStorage.getInstance().getReference().child("STORY").child(mUserPhone);
         }
 
         mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -101,12 +99,10 @@ public class FullScreenImageActivity extends AppCompatActivity {
         Intent callingActivityIntent = getIntent();
         if (callingActivityIntent != null) {
             mImageUri = callingActivityIntent.getData();
-            if (mImageUri != null)
-                if (fullScreenImageView != null) {
-                    Glide.with(this)
-                            .load(mImageUri)
-                            .into(fullScreenImageView);
-                }
+            if (mImageUri != null && fullScreenImageView != null)
+                Glide.with(this)
+                        .load(mImageUri)
+                        .into(fullScreenImageView);
         }
 
         mDescriptionInput = findViewById(R.id.descriptionEditText);
@@ -114,20 +110,20 @@ public class FullScreenImageActivity extends AppCompatActivity {
         postButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (getIntent().getStringExtra(ChatsActivity.CHATS_ACTIVITY_CAMERA_EXTRA) != null) {
-                    // open transfer Activity
-                    Intent transferIntent = new Intent(getApplicationContext(), TransferActivity.class);
-                    transferIntent.putExtra(URI_EXTRA, mImageUri);
-                    transferIntent.putExtra(TEXT_EXTRA, mDescriptionInput.getText().toString());
-                    startActivity(transferIntent);
-                    finish();
-                } else
+//                if (getIntent().getStringExtra(ChatsActivity.CHATS_ACTIVITY_CAMERA_EXTRA) != null) {
+//                    // open transfer Activity
+//                    Intent transferIntent = new Intent(getApplicationContext(), TransferActivity.class);
+//                    transferIntent.putExtra(URI_EXTRA, mImageUri);
+//                    transferIntent.putExtra(TEXT_EXTRA, mDescriptionInput.getText().toString());
+//                    startActivity(transferIntent);
+//                    finish();
+//                } else
                     new AlertDialog.Builder(getApplicationContext())
-                            .setMessage("Share Location Of Of This Activity?")
+                            .setMessage("Share Location Of This Media?")
                             .setPositiveButton("Share", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
-                                    location = true;
+                                    mLocationAllowed = true;
                                 }
                             })
                             .setNegativeButton("No, Please", null)
@@ -141,22 +137,23 @@ public class FullScreenImageActivity extends AppCompatActivity {
     private void postStatus() {
 
         mDescription = mDescriptionInput.getText().toString();
-        //even if location was allowed by user, if there is no LatLng available then set location to false
+        //even if mLocationAllowed was allowed by user, if there is no LatLng available then set mLocationAllowed to false
         if (mLatitude == 0 && mLongitude == 0)
-            location = false;
+            mLocationAllowed = false;
 
-        StorageReference filepath = mStorageReference.child(RandomStringGenerator.randomString() + ".jpg");
+        final StorageReference filepath = mStorageReference.child(RandomStringGenerator.randomString() + ".jpg");
         UploadTask uploadTask = filepath.putFile(mImageUri);
         uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
             @Override
             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                String downloadUrl = Objects.requireNonNull(taskSnapshot.getDownloadUrl(), "Download Url Can't Be Null").toString();
+                String downloadUrl = Objects.requireNonNull(filepath.getDownloadUrl(), "Download Url Can't Be Null").toString();
 
-                Stories stories = new Stories(location, downloadUrl,
+                Stories story = new Stories(mLocationAllowed, downloadUrl,
                         mDescription, System.currentTimeMillis(), mLatitude, mLongitude, "image",
                         mUserPhone);
+                story.setKey(mDatabaseReference.push().push().getKey()); //key of the document for deleting
 
-                mDatabaseReference.push().setValue(stories).addOnCompleteListener(new OnCompleteListener<Void>() {
+                mDatabaseReference.push().setValue(story).addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
                         if (task.isSuccessful()) {

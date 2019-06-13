@@ -19,13 +19,6 @@ public class SplashActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        //initialising variables
-        FirebaseApp.initializeApp(this);
-        Fresco.initialize(this);
-        OneSignal.startInit(this).init();
-        OneSignal.setSubscription(true);
-        OneSignal.setInFocusDisplaying(OneSignal.OSInFocusDisplayOption.Notification);
-
         boolean loggedIn = FirebaseAuth.getInstance().getCurrentUser() != null;
 
         SharedPreferences sharedPreferences = getSharedPreferences("mSharedPreferences", MODE_PRIVATE);

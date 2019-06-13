@@ -71,6 +71,8 @@
     <string name="contacts">Contacts</string>
     <string name="send_to">Send To ..</string>
     <string name="reload_content">reload content</string>
+    <string name="subscribe">Subscribe</string>
+    <string name="promotion_body">Dear Mr./Ms. Last Name: (Use a formal salutation, not a first name, unless you know the person extremely well. If you do not know the persons gender, you can write out their full name. For instance, you could write "Dear Pat Crody" instead of "Dear Mr. Crody" or "Dear Ms. Crody." Note that the person's name is always followed by a colon (:) in a business letter, and not a comma. If you do not know the recipient’s name, it’s still common (and safe) to use the old-fashioned “To Whom It May Concern:”). </string>
 
     <string-array name="places_types">
         <item>What Type Of pLace is it?</item>
