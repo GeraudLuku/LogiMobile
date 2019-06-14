@@ -65,14 +65,17 @@ import com.firebase.geofire.LocationCallback;
 import com.geraud.android.gps1.Chat.ChatActivity;
 import com.geraud.android.gps1.Chat.ChatsActivity;
 import com.geraud.android.gps1.Dailogs.AddPlace;
+import com.geraud.android.gps1.InfoWindow.BranchMarkerInfoWindow;
 import com.geraud.android.gps1.InfoWindow.PeopleMarkerInfoWindow;
 import com.geraud.android.gps1.InfoWindow.PlacesMarkerInfoWindow;
 import com.geraud.android.gps1.InfoWindow.TrackerInfoWindow;
+import com.geraud.android.gps1.Models.Branch;
 import com.geraud.android.gps1.Models.Chat;
 import com.geraud.android.gps1.Models.ChatInfo;
 import com.geraud.android.gps1.Models.GeoFence;
 import com.geraud.android.gps1.Models.Message;
 import com.geraud.android.gps1.Models.Place;
+import com.geraud.android.gps1.Models.Subscription;
 import com.geraud.android.gps1.Models.User;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.Registration;
@@ -171,7 +174,7 @@ public class MapsActivity extends BaseActivity implements
     private EditText dUserName;
     private ImageView dProfileImage;
 
-    private DatabaseReference mDatabaseReference;
+    public DatabaseReference mDatabaseReference;
     private DatabaseReference mSearchRef;
     private String USER_KEY;
 
@@ -184,7 +187,7 @@ public class MapsActivity extends BaseActivity implements
     private Gson mGson = new Gson();
 
     // The callback for the management of the user settings regarding location
-    public OnCompleteListener<LocationSettingsResponse> mResultCallbackFromSettings = new OnCompleteListener<LocationSettingsResponse>(){
+    public OnCompleteListener<LocationSettingsResponse> mResultCallbackFromSettings = new OnCompleteListener<LocationSettingsResponse>() {
         @Override
         public void onComplete(@NonNull Task<LocationSettingsResponse> task) {
             try {
@@ -700,12 +703,6 @@ public class MapsActivity extends BaseActivity implements
 
             mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
-            getCurrentLocation();
-            LoadPlaces(); //my places
-            loadPlace(); //friends places
-            loadGeoFences();
-            LoadFriends();
-
             //Setting onMarker/OnMap Listeners
             mMap.setOnMapLongClickListener(mOnMapLongCLickListener);
             mMap.setOnMapClickListener(mOnMapClickListener);
@@ -726,6 +723,13 @@ public class MapsActivity extends BaseActivity implements
             } else {
                 requestPermission();
             }
+
+            getCurrentLocation();
+            LoadPlaces(); //my places
+            loadPlace(); //friends places
+            loadGeoFences();
+            LoadFriends();
+            loadSubscriptions();
         }
     };
 
@@ -951,6 +955,15 @@ public class MapsActivity extends BaseActivity implements
                         }
                     });
                     break;
+                case "branch":
+                    mMap.setInfoWindowAdapter(new BranchMarkerInfoWindow(getApplicationContext()));
+                    mMap.setOnInfoWindowLongClickListener(new GoogleMap.OnInfoWindowLongClickListener() {
+                        @Override
+                        public void onInfoWindowLongClick(Marker marker) {
+                            placeMenu();
+                        }
+                    });
+                    break;
                 //else if its my marker (my location) so as not to cause a NUllPointer Exception ;)
                 default:
                     Toast.makeText(getApplicationContext(), "My Marker", Toast.LENGTH_SHORT).show();
@@ -1040,7 +1053,7 @@ public class MapsActivity extends BaseActivity implements
         DatabaseReference mChatDB = FirebaseDatabase.getInstance().getReference().child("CHAT").child(chatId).child("info");
         mChatDB.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists()) {
                     ChatInfo chatInfo = dataSnapshot.getValue(ChatInfo.class);
                     mChatInfo.add(chatInfo);
@@ -1323,6 +1336,7 @@ public class MapsActivity extends BaseActivity implements
 
     private Marker mPlaces;
     private Marker mFriendPlace;
+    private Marker mSubscriptions;
 
     private void LoadPlaces() {
         if (mPlaces != null) mPlaces.remove();
@@ -1366,6 +1380,69 @@ public class MapsActivity extends BaseActivity implements
             }
         });
 
+    }
+
+    private void loadSubscriptions() {
+        mDatabaseReference.child("USER").child(mUserInfoObject.getPhone()).child("subscriptions").addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                final Subscription subscription = dataSnapshot.getValue(Subscription.class);
+                //get branch info
+                mDatabaseReference.child("BRANCH").child(subscription.getCompanyId())
+                        .child(subscription.getBranchId())
+                        .child("info").addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        final Branch branch = dataSnapshot.getValue(Branch.class);
+                        final String BranchJSON = mGson.toJson(branch);
+                        //get location
+                        mGeoFire.getLocation(subscription.getBranchId(), new LocationCallback() {
+                            @Override
+                            public void onLocationResult(String key, GeoLocation location) {
+                                //show location on map
+                                mSubscriptions = mMap.addMarker(new MarkerOptions()
+                                        .position(new LatLng(location.latitude, location.longitude))
+                                        .title("branch")
+                                        .snippet(BranchJSON)
+                                        .icon(BitmapDescriptorFactory.fromResource(PlacesTypeToDrawable.getDrawable(branch != null ? branch.getType() : null)))
+                                        .draggable(false)
+                                );
+                            }
+
+                            @Override
+                            public void onCancelled(DatabaseError databaseError) {
+                                Toast.makeText(MapsActivity.this, "Branch Location Cancelled", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                        Toast.makeText(MapsActivity.this, "Branch ChildEventListener Cancelled", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Toast.makeText(MapsActivity.this, "Subscriptions ChildEventListener Cancelled", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void loadPlace() {

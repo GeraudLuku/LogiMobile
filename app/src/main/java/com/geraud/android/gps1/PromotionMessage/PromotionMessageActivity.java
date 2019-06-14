@@ -9,6 +9,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.geraud.android.gps1.Models.PromotionMessage;
+import com.geraud.android.gps1.Models.Subscription;
 import com.geraud.android.gps1.Models.User;
 import com.geraud.android.gps1.R;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -64,24 +65,27 @@ public class PromotionMessageActivity extends AppCompatActivity {
     }
 
     public void subscribe(View v) {
+        //subscription object
+        Subscription subscription = new Subscription(promotionMessage.getBranchId(), promotionMessage.getCompanyId());
         //save branch under user
         mDatabase.child("USER").child(mUserPhone).child("subscriptions")
-                .child(promotionMessage.getBranchId())
-                .setValue(true).addOnSuccessListener(new OnSuccessListener<Void>() {
-            @Override
-            public void onSuccess(Void aVoid) {
-                //save also under branch document
-                mDatabase.child("BRANCH").child(promotionMessage.getCompanyId()).child(promotionMessage.getBranchId())
-                        .child("subscribedUsers")
-                        .child(mUser.getNotificationKey()).setValue(true).addOnSuccessListener(new OnSuccessListener<Void>() {
+                .push()
+                .setValue(subscription)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {
-                        //remove button
-                        mSubscribeBtn.setVisibility(View.GONE);
+                        //save also under branch document
+                        mDatabase.child("BRANCH").child(promotionMessage.getCompanyId()).child(promotionMessage.getBranchId())
+                                .child("subscribedUsers")
+                                .child(mUser.getNotificationKey()).setValue(true).addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                //remove button
+                                mSubscribeBtn.setVisibility(View.GONE);
+                            }
+                        });
                     }
                 });
-            }
-        });
     }
 
     @Override
