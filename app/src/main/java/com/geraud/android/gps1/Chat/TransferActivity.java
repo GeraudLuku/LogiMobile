@@ -341,13 +341,13 @@ public class TransferActivity extends AppCompatActivity {
                 for (ChatInfo mChatInfo : mChatInfo)
                     if (mChatInfo.getId().equals(chat.getChatId()))
                         if (mChatInfo.getType().equals("single")) {
-                            new SendNotification(
+                            new SendNotification(getApplicationContext(),
                                     message,
                                     mUserInfo.getName(),
                                     mUser.getNotificationKey()
                             );
                         } else if (mChatInfo.getType().equals("group")) {
-                            new SendNotification(
+                            new SendNotification(getApplicationContext(),
                                     String.format(" %s : %s ", mUserInfo.getName(), message),
                                     mChatInfo.getName(),
                                     mUser.getNotificationKey()

@@ -82,7 +82,7 @@ public class StoriesRecyclerAdapter extends RecyclerView.Adapter<StoriesRecycler
             public void onClick(View v) {
                 //send stories object to viewpager activity
                 Intent intent = new Intent(mContext, FullScreenStoryActivity.class);
-                intent.putExtra("story", mStoriesList.get(holder.getAdapterPosition()));
+                intent.putExtra(FullScreenStoryActivity.STORY, mStoriesList.get(holder.getAdapterPosition()));
                 mContext.startActivity(intent);
             }
         });

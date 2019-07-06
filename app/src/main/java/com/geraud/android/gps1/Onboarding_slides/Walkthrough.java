@@ -12,15 +12,16 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.RecyclerAdapter.SliderAdapter;
 import com.geraud.android.gps1.Registration;
+import com.geraud.android.gps1.SplashScreen.SplashActivity;
 import com.hololo.tutorial.library.Step;
 import com.hololo.tutorial.library.TutorialActivity;
 
 public class Walkthrough extends TutorialActivity {
-    private static final String TAG = "WalkthroughActivity";
 
 //    private ViewPager mViewPager;
 //    private LinearLayout mLinearLayout;
@@ -69,56 +70,54 @@ public class Walkthrough extends TutorialActivity {
 //        }
 //    };
 
+    private int[] backgroundColors = {
+            R.color.royal_blue,
+            R.color.light_sky_blue,
+            R.color.pink,
+            R.color.black,
+            R.color._light_green,
+            R.color.royal_blue
+    };
+
+    private int[] slideImages = {
+            R.drawable.locations1,
+            R.drawable.locations1,
+            R.drawable.privacy1,
+            R.drawable.adaptive_map1,
+            R.drawable.add_location,
+            R.drawable.subscribe
+    };
+
+    private String[] headings = {
+            "Location",
+            "Chat",
+            "Privacy",
+            "Adaptive Maps",
+            "Discover & Add Locations",
+            "Be a Customer"
+    };
+    private String[] descriptions = {
+            "Get access to real-time location of all available friends and also locations of areas around you",
+            "Send messages to your friends using our well optimised cloud messaging system",
+            "We got your back on the moments you will like to disappear from the radar",
+            "The map's contrast automatically adapts to your environment to improve your vision",
+            "Don't just watch default locations you can create custom locations on the map and share with your friends",
+            "Receive and chose to subscribe to businesses around you to receive promotion updates from them"
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_walkthrough);
+//        setContentView(R.layout.activity_walkthrough);
 
-        //declare in the shared preference that this activity has been opened once
-        //        If you do not call commit() or apply(), your changes will not be saved.
-        //                Commit() writes the changes synchronously and directly to the file
-        //                Apply() writes the changes to the in-memory SharedPreferences immediately but begins an asynchronous commit to disk
-        SharedPreferences sharedPreferences = getSharedPreferences("mSharedPreferences", MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putBoolean("firstStart", false);
-        editor.apply();
-
-        //slide one
-        addFragment(new Step.Builder().setTitle("Location")
-                .setContent("Get access to real-time location of all available friends and also locations of areas around you")
-                .setBackgroundColor(ContextCompat.getColor(getApplicationContext(), R.color.royal_blue)) // int background color
-                .setDrawable(R.drawable.locations1) // int top drawable
-                .build());
-        //slide two
-        addFragment(new Step.Builder().setTitle("Chat")
-                .setContent("Send messages to your friends using our well optimised cloud messaging system")
-                .setBackgroundColor(ContextCompat.getColor(getApplicationContext(), R.color.light_sky_blue)) // int background color
-                .build());
-        //slide three
-        addFragment(new Step.Builder().setTitle("Privacy")
-                .setContent("We got your back on the moments you will like to disappear from the radar")
-                .setBackgroundColor(ContextCompat.getColor(getApplicationContext(), R.color.pink)) // int background color
-                .setDrawable(R.drawable.privacy1) // int top drawable
-                .build());
-        //slide four
-        addFragment(new Step.Builder().setTitle("Adaptive Maps")
-                .setContent("The map's contrast automatically adapts to your environment to improve your vision")
-                .setBackgroundColor(ContextCompat.getColor(getApplicationContext(), R.color.light_goldenrod_yellow)) // int background color
-                .setDrawable(R.drawable.adaptive_map1) // int top drawable
-                .build());
-        //slide five
-        addFragment(new Step.Builder().setTitle("Discover & Add Locations")
-                .setContent("Don't just watch default locations you can create custom locations on the map and share with your friends")
-                .setBackgroundColor(ContextCompat.getColor(getApplicationContext(), R.color._light_green)) // int background color
-                .setDrawable(R.drawable.add_location) // int top drawable
-                .build());
-        //slide six
-        addFragment(new Step.Builder().setTitle("Be a Customer")
-                .setContent("Receive and chose to subscribe to businesses around you to receive promotion updates from them")
-                .setBackgroundColor(ContextCompat.getColor(getApplicationContext(), R.color.royal_blue)) // int background color
-                .setDrawable(R.drawable.subscribe)
-                .build());
-
+        //create a for loop to programmatically create slides
+        for (int i = 0; i < headings.length; i++) {
+            addFragment(new Step.Builder().setTitle(headings[i])
+                    .setContent(descriptions[i])
+                    .setBackgroundColor(ContextCompat.getColor(getApplicationContext(), backgroundColors[i])) // int background color
+                    .setDrawable(slideImages[i]) // int top drawable
+                    .build());
+        }
 //        //configs
 //        mLinearLayout = findViewById(R.id.linearLayout);
 //        mViewPager = findViewById(R.id.pager);
@@ -164,8 +163,18 @@ public class Walkthrough extends TutorialActivity {
 
     @Override
     public void finishTutorial() {
+        //declare in the shared preference that this activity has been opened once
+        //        If you do not call commit() or apply(), your changes will not be saved.
+        //                Commit() writes the changes synchronously and directly to the file
+        //                Apply() writes the changes to the in-memory SharedPreferences immediately but begins an asynchronous commit to disk
+        SharedPreferences sharedPreferences = getSharedPreferences(SplashActivity.SHARED_PREF, MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(SplashActivity.FIRST_START, false);
+        editor.apply();
         // Your implementation
+        Toast.makeText(getApplicationContext(),"exiting walkthrough",Toast.LENGTH_SHORT).show();
         startActivity(new Intent(Walkthrough.this, Registration.class));
+        finish();
     }
 
     @Override

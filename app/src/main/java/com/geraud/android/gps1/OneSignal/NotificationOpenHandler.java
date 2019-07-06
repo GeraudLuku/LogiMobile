@@ -13,11 +13,12 @@ import com.onesignal.OneSignal;
 import org.json.JSONObject;
 
 public class NotificationOpenHandler implements OneSignal.NotificationOpenedHandler {
+    public final static String PROMOTION_MSG = "promotionMessage";
 
-    private Application application;
+    private Application mApplication;
 
     public NotificationOpenHandler(Application application) {
-        this.application = application;
+        this.mApplication = application;
     }
 
     @Override
@@ -26,22 +27,23 @@ public class NotificationOpenHandler implements OneSignal.NotificationOpenedHand
         String title = result.notification.payload.title;
         String body = result.notification.payload.body;
 
-        PromotionMessage promotionMessage = new PromotionMessage(title, body
-                , data.optString("branchId", "noBranchIdGotten")
-                , data.optLong("timestamp", 0)
-                , data.optString("companyId", "noCompanyId"));
-
         if (data != null) {
+
+            PromotionMessage promotionMessage = new PromotionMessage(title, body
+                    , data.optString("branchId", "noBranchIdGotten")
+                    , data.optLong("timestamp", 0)
+                    , data.optString("companyId", "noCompanyId"));
+
             //send to view promtion message
-            Intent intent = new Intent(application, PromotionMessageActivity.class);
+            Intent intent = new Intent(mApplication, PromotionMessageActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_NEW_TASK);
             Bundle bundle = new Bundle();
-            bundle.putSerializable("promotionMessage", promotionMessage);
+            bundle.putSerializable(PROMOTION_MSG, promotionMessage);
             intent.putExtras(bundle);
-            application.startActivity(intent);
+            mApplication.startActivity(intent);
         } else {
             //send to chats activity
-            application.startActivity(new Intent(application, ChatsActivity.class));
+            mApplication.startActivity(new Intent(mApplication, ChatsActivity.class));
         }
     }
 }

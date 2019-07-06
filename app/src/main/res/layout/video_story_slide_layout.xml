@@ -39,4 +39,13 @@
         android:layout_marginBottom="59dp"
         android:alpha=".3"
         android:background="@color/white" />
+
+    <ProgressBar
+        android:id="@+id/bufferProgress"
+        style="?android:attr/progressBarStyle"
+        android:visibility="invisible"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:indeterminate="true" />
 </RelativeLayout>

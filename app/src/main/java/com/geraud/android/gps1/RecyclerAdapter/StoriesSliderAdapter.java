@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.support.annotation.NonNull;
 import android.support.v4.view.PagerAdapter;
 import android.view.LayoutInflater;
@@ -13,6 +14,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
@@ -26,63 +28,19 @@ import com.geraud.android.gps1.R;
 import java.io.File;
 import java.util.ArrayList;
 
-public class StoriesSliderAdapter extends PagerAdapter implements CacheListener {
+public class StoriesSliderAdapter extends PagerAdapter {
     private Context mContext;
     private ArrayList<Stories> mStoriesList;
 
     private VideoView mVideoView;
 
-    private HttpProxyCacheServer mProxy;
-
     private View mView;
     private int mPosition;
-
-    private AudioBecomingNoisy mAudioBecomingNoisy;
-    private AudioManager mAudioManager;
-    private IntentFilter mNoisyIntentFilter;
-    private AudioManager.OnAudioFocusChangeListener mOnAudioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
-        @Override
-        public void onAudioFocusChange(int focusChange) {
-            switch (focusChange) {
-                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-                    mediaPause();
-                    break;
-
-                case AudioManager.AUDIOFOCUS_GAIN:
-                    mediaPlay();
-                    break;
-                case AudioManager.AUDIOFOCUS_LOSS:
-                    mediaPause();
-                    break;
-            }
-        }
-    };
-
-    private class AudioBecomingNoisy extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            mediaPause();
-        }
-    }
 
     public StoriesSliderAdapter(Context context, ArrayList<Stories> stories) {
         mContext = context;
         mStoriesList = stories;
-
-        mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
-        mAudioBecomingNoisy = new AudioBecomingNoisy();
-        mNoisyIntentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
-
-        mProxy = getProxy();
     }
-
-    private HttpProxyCacheServer getProxy() {
-        return new HttpProxyCacheServer.Builder(mContext)
-                .maxCacheSize(6144)       // 2 Gb for cache 1GB = 3072
-                .build();
-    }
-
 
     @Override
     public int getCount() {
@@ -124,9 +82,11 @@ public class StoriesSliderAdapter extends PagerAdapter implements CacheListener 
             else
                 imageTextView.setText(mStoriesList.get(position).getDescription());
 
+            return mView;
 
-        } else if (mStoriesList.get(position).getType().equals("video")) {
+        } else {
             mView = layoutInflater.inflate(R.layout.video_story_slide_layout, container, false);
+            final ProgressBar progressBar = mView.findViewById(R.id.bufferProgress);
             container.addView(mView);
 
             mVideoView = mView.findViewById(R.id.videoView);
@@ -134,66 +94,35 @@ public class StoriesSliderAdapter extends PagerAdapter implements CacheListener 
             View line = mView.findViewById(R.id.view);
 
             //load video on videoView
-            String proxyUrl = mProxy.getProxyUrl(mStoriesList.get(position).getMedia());
-            mVideoView.setVideoPath(proxyUrl);
+            mVideoView.setVideoPath(mStoriesList.get(position).getMedia());
+            mVideoView.requestFocus();
+            //buffering listener for the video
+            mVideoView.setOnInfoListener(new MediaPlayer.OnInfoListener() {
+                @Override
+                public boolean onInfo(MediaPlayer mp, int what, int extra) {
+                    if (what == mp.MEDIA_INFO_BUFFERING_START) {
+                        progressBar.setVisibility(View.VISIBLE);
+                    } else if (what == mp.MEDIA_INFO_BUFFERING_END) {
+                        progressBar.setVisibility(View.INVISIBLE);
+                    }
+                    return false;
+                }
+            });
             mVideoView.start();
+
+            mVideoView.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+                    mp.seekTo(0);
+                    mp.start();
+                }
+            });
 
             //load description text
             if (mStoriesList.get(position).getDescription().equals(""))
                 line.setVisibility(View.INVISIBLE);
-            else
-                mVideoTextView.setText(mStoriesList.get(position).getDescription());
 
-
-            //set on Touch listener onRelease it plays onTouch it pauses
-            mVideoView.setOnTouchListener(new View.OnTouchListener() {
-                @Override
-                public boolean onTouch(View v, MotionEvent event) {
-                    boolean result = false;
-                    switch (event.getAction()) {
-                        case MotionEvent.ACTION_DOWN:
-                            //play video
-                            mediaPlay();
-                            result = true;
-                            break;
-
-                        case MotionEvent.ACTION_UP:
-                            // pause video
-                            mediaPause();
-                            result = true;
-                            break;
-                    }
-                    return result;
-                }
-            });
-
+            return mView;
         }
-        return mView;
     }
-
-    private void mediaPause() {
-        mVideoView.pause();
-        mAudioManager.abandonAudioFocus(mOnAudioFocusChangeListener);
-        mContext.unregisterReceiver(mAudioBecomingNoisy);
-    }
-
-    private void mediaPlay() {
-        mContext.registerReceiver(mAudioBecomingNoisy, mNoisyIntentFilter);
-        int requestAudioFocusResult = mAudioManager.requestAudioFocus(mOnAudioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
-        if (requestAudioFocusResult == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
-            mVideoView.start();
-    }
-
-    //progress of downloading status video
-    @Override
-    public void onCacheAvailable(File cacheFile, String url, int percentsAvailable) {
-        Toast.makeText(mContext, "Percentage Video Downloaded : " + percentsAvailable + "%", Toast.LENGTH_SHORT).show();
-    }
-
-    @Override
-    public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
-        container.removeView((View) object);
-    }
-
-
 }

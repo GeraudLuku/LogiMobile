@@ -310,13 +310,13 @@ public class ChatActivity extends BaseActivity {
         for (User mUser : mChatObject.getUserObjectArrayList())
             if (!mUser.getPhone().equals(mUserPhone)) {
                 if (mChatInfoObject.getType().equals("single")) {
-                    new SendNotification(
+                    new SendNotification(getApplicationContext(),
                             message,
                             mUserInfo.getName(),
                             mUser.getNotificationKey()
                     );
                 } else if (mChatInfoObject.getType().equals("group")) {
-                    new SendNotification(
+                    new SendNotification(getApplicationContext(),
                             String.format(" %s : %s ", mUserInfo.getName(), message),
                             mChatInfoObject.getName(),
                             mUser.getNotificationKey()

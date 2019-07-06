@@ -88,7 +88,7 @@ public class PlacesTypeToDrawable {
         placeToIcon.put("Zoo", R.drawable.zoo);
     }
 
-    public static Integer getDrawable(String code) {
+    public static int getDrawable(String code) {
         return placeToIcon.get(code);
     }
 

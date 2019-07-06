@@ -48,10 +48,7 @@ public class GeoQueries extends Service {
 
 
     public GeoQueries() {
-        //init variables
-        mGeocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
-        mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("USER");
-        mGeoFire = new GeoFire(FirebaseDatabase.getInstance().getReference().child("LOCATION"));
+
     }
 
     @Override
@@ -59,118 +56,104 @@ public class GeoQueries extends Service {
         return iBinder;
     }
 
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        //init variables
+        mGeocoder = new Geocoder(GeoQueries.this, Locale.getDefault());
+        mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("USER");
+        mGeoFire = new GeoFire(FirebaseDatabase.getInstance().getReference().child("LOCATION"));
+    }
+
     //methods below
-    public void query(final List<LatLng> GeoLocations, final List<String> Contacts) {
-
-        //run in a set  INTERVAL
-        new Timer().schedule(new TimerTask() {
+    public void query(LatLng geoLocation) {
+        Toast.makeText(GeoQueries.this, "geolist is loaded", Toast.LENGTH_SHORT).show();
+        //loop through the list of geo locations
+        try {
+            mAddress = mGeocoder.getFromLocation(geoLocation.latitude, geoLocation.longitude, 1); // Here 1 represent max location result to returned, by documents it recommended 1 to 5
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        mGeoQuery = mGeoFire.queryAtLocation(new GeoLocation(geoLocation.latitude, geoLocation.longitude), 0.2); // radius is in killometer 0.6 = 600 meters
+        mGeoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
             @Override
-            public void run() {
-                if (!GeoLocations.isEmpty()) {
-                    //loop through the list of geo locations
-                    for (final LatLng mLocation : GeoLocations) {
-
-                        try {
-                            mAddress = mGeocoder.getFromLocation(mLocation.latitude, mLocation.longitude, 1); // Here 1 represent max location result to returned, by documents it recommended 1 to 5
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        mGeoQuery = mGeoFire.queryAtLocation(new GeoLocation(mLocation.latitude, mLocation.longitude), 0.6); // radius is in killometer 0.6 = 600 meters
-                        mGeoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
-                            @Override
-                            public void onKeyEntered(String key, GeoLocation location) {
-                                //check if the person is one of my users
-                                if (!Contacts.isEmpty() && Contacts.contains(key)) {
-                                    //read the users name from database using the key
-                                    mDatabaseReference.child(key).addListenerForSingleValueEvent(new ValueEventListener() {
-                                        @Override
-                                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                                            if (dataSnapshot.exists()) {
-                                                for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                                                    User user = dc.getValue(User.class);
-                                                    //make a notification to tell the user that his/her friend is in one of his perimeters
-                                                    if (user != null) {
-                                                        PugNotification.with(getApplicationContext())
-                                                                .load()
-                                                                .title("Geo Trigger")
-                                                                .message(String.format(Locale.getDefault(), "%s Just Entered Your GeoLocation At %s, %s",
-                                                                        user.getName().toUpperCase(), (mAddress.get(0).getFeatureName() != null) ? mAddress.get(0).getFeatureName() : "GeoLocation",
-                                                                        (mAddress.get(0).getLocality() != null) ? mAddress.get(0).getLocality() : "Area"))
-                                                                .flags(Notification.DEFAULT_ALL)
-                                                                .vibrate(pattern)
-                                                                .color(R.color.cornflower_blue)
-                                                                .custom()
-                                                                .build();
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        @Override
-                                        public void onCancelled(@NonNull DatabaseError databaseError) {
-                                            Toast.makeText(getApplicationContext(), "GeoQueries On Exited Query Failed", Toast.LENGTH_SHORT).show();
-                                        }
-                                    });
-                                } //else do nothing
-                            }
-
-                            @Override
-                            public void onKeyExited(String key) {
-
-                                if (Contacts.contains(key)) {
-
-                                    mDatabaseReference.child(key).addListenerForSingleValueEvent(new ValueEventListener() {
-                                        @Override
-                                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                                            if (dataSnapshot.exists()) {
-                                                for (DataSnapshot dc : dataSnapshot.getChildren()) {
-                                                    User user = dc.getValue(User.class);
-                                                    //make a notification to tell the user that his/her friend is in one of his perimeters
-                                                    PugNotification.with(getApplicationContext())
-                                                            .load()
-                                                            .title("Geo Trigger")
-                                                            .message(String.format(Locale.getDefault(), "%s Just Exited Your GeoLocation At %s, %s", user != null ? user.getName().toUpperCase() : null, (mAddress.get(0).getFeatureName() != null) ? mAddress.get(0).getFeatureName() : "GeoLocation", (mAddress.get(0).getLocality() != null) ? mAddress.get(0).getLocality() : "Area"))
-                                                            .flags(Notification.DEFAULT_ALL)
-                                                            .vibrate(pattern)
-                                                            .color(R.color.cornflower_blue)
-                                                            .custom()
-                                                            .build();
-                                                }
-                                            }
-                                        }
-
-                                        @Override
-                                        public void onCancelled(@NonNull DatabaseError databaseError) {
-                                            Toast.makeText(getApplicationContext(), "GeoQueries On Exited Query Failed", Toast.LENGTH_SHORT).show();
-                                        }
-                                    });
+            public void onKeyEntered(String key, GeoLocation location) {
+                //read the users name from database using the key
+                mDatabaseReference.child(key).addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            for (DataSnapshot dc : dataSnapshot.getChildren()) {
+                                User user = dc.getValue(User.class);
+                                //make a notification to tell the user that his/her friend is in one of his perimeters
+                                if (user != null) {
+                                    PugNotification.with(GeoQueries.this)
+                                            .load()
+                                            .title("Geo Trigger")
+                                            .message(String.format(Locale.getDefault(), "%s Just Entered Your GeoLocation At %s, %s",
+                                                    user.getName().toUpperCase(), (mAddress.get(0).getFeatureName() != null) ? mAddress.get(0).getFeatureName() : "GeoLocation",
+                                                    (mAddress.get(0).getLocality() != null) ? mAddress.get(0).getLocality() : "Area"))
+                                            .flags(Notification.DEFAULT_ALL)
+                                            .vibrate(pattern)
+                                            .color(R.color.cornflower_blue)
+                                            .custom()
+                                            .build();
                                 }
                             }
-
-                            @Override
-                            public void onKeyMoved(String key, GeoLocation location) {
-
-                            }
-
-                            @Override
-                            public void onGeoQueryReady() {
-
-                            }
-
-                            @Override
-                            public void onGeoQueryError(DatabaseError error) {
-
-                            }
-                        });
-
-                        mAddress.clear(); //clear address list for next iteration
+                        }
                     }
-                } else
-                    Toast.makeText(getApplicationContext(), "Geolocation Array is empty", Toast.LENGTH_SHORT).show();
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                        Toast.makeText(GeoQueries.this, "GeoQueries On Exited Query Failed", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onKeyExited(String key) {
+                mDatabaseReference.child(key).addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists()) {
+                            for (DataSnapshot dc : dataSnapshot.getChildren()) {
+                                User user = dc.getValue(User.class);
+                                //make a notification to tell the user that his/her friend is in one of his perimeters
+                                PugNotification.with(GeoQueries.this)
+                                        .load()
+                                        .title("Geo Trigger")
+                                        .message(String.format(Locale.getDefault(), "%s Just Exited Your GeoLocation At %s, %s", user != null ? user.getName().toUpperCase() : null, (mAddress.get(0).getFeatureName() != null) ? mAddress.get(0).getFeatureName() : "GeoLocation", (mAddress.get(0).getLocality() != null) ? mAddress.get(0).getLocality() : "Area"))
+                                        .flags(Notification.DEFAULT_ALL)
+                                        .vibrate(pattern)
+                                        .color(R.color.cornflower_blue)
+                                        .custom()
+                                        .build();
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                        Toast.makeText(GeoQueries.this, "GeoQueries On Exited Query Failed", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onKeyMoved(String key, GeoLocation location) {
 
             }
-        }, 0, TimeUnit.MINUTES.toMillis(2));
 
+            @Override
+            public void onGeoQueryReady() {
+                Toast.makeText(getApplicationContext(), "GeoQuery- Started Sucessfully", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onGeoQueryError(DatabaseError error) {
+                Toast.makeText(getApplicationContext(), "GeoQuery- Start Failed", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override

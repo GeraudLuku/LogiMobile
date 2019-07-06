@@ -20,10 +20,12 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+import android.widget.VideoView;
 
 import com.geraud.android.gps1.Chat.TransferActivity;
 import com.geraud.android.gps1.Models.Stories;
 import com.geraud.android.gps1.R;
+import com.geraud.android.gps1.Stories.HeaderFragment;
 import com.geraud.android.gps1.Utils.RandomStringGenerator;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -37,23 +39,15 @@ import com.google.firebase.storage.UploadTask;
 
 import java.util.Objects;
 
-public class VideoPlayActivity extends AppCompatActivity implements
-        SurfaceHolder.Callback,
-        AudioManager.OnAudioFocusChangeListener {
+public class VideoPlayActivity extends AppCompatActivity{
     public static final String URI_EXTRA = "uri";
     public static final String TEXT_EXTRA = "text";
-
-    private MediaPlayer mMediaPlayer;
-    private SurfaceView mSurfaceView;
-
-    private AudioManager mAudioManager;
-    private IntentFilter mNoisyIntentFilter;
-    private AudioBecomingNoisy mAudioBecomingNoisy;
 
     private DatabaseReference mDatabaseReference;
     private StorageReference mStorageReference;
 
     private EditText mDescriptionEditText;
+    private VideoView mVideoView;
     private String mDescription;
     private Uri mVideoUri;
     private String mUserPhone;
@@ -63,22 +57,21 @@ public class VideoPlayActivity extends AppCompatActivity implements
     private double mLongitude = 0;
 
 
-    private class AudioBecomingNoisy extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            mediaPause();
-        }
-    }
-
     @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video_play);
 
-        Intent callingIntent = this.getIntent();
+        //get latitude and longitude
+        if (getIntent() != null) {
+            mLatitude = getIntent().getDoubleExtra(HeaderFragment.HEADER_LAT, 0);
+            mLongitude = getIntent().getDoubleExtra(HeaderFragment.HEADER_LNG, 0);
+        }
+
+        Intent callingIntent = getIntent();
         if (callingIntent != null) {
-            mVideoUri = callingIntent.getData();
+            mVideoUri = Uri.parse(callingIntent.getData().toString());
         }
 
         mDescriptionEditText = findViewById(R.id.descriptionEditText);
@@ -88,22 +81,13 @@ public class VideoPlayActivity extends AppCompatActivity implements
             mStorageReference = FirebaseStorage.getInstance().getReference().child("STORY").child(mUserPhone);
         }
 
-        mSurfaceView = findViewById(R.id.videoSurfaceView);
-        mSurfaceView.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
+        //get videoview and load video uri on it
+        mVideoView = findViewById(R.id.videoSurfaceView);
+        mVideoView.setVideoURI(mVideoUri);
+        mVideoView.requestFocus();
+        mVideoView.start();
+        mVideoView.setOnCompletionListener(mCompletionListener);
 
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        mediaPlay();
-                        break;
-                    case MotionEvent.ACTION_UP:
-                        mediaPause();
-                        break;
-                }
-                return true;
-            }
-        });
 
         Button postbutton = findViewById(R.id.postButton);
         postbutton.setOnClickListener(new View.OnClickListener() {
@@ -116,150 +100,105 @@ public class VideoPlayActivity extends AppCompatActivity implements
 //                    startActivity(transferIntent);
 //                    finish();
 //                } else
-                    new AlertDialog.Builder(getApplicationContext())
-                            .setMessage("Share Location Of This Status?")
-                            .setPositiveButton("Share", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    mLocationAllowed = true;
-                                }
-                            })
-                            .setNegativeButton("No, Please", null)
-                            .show();
-                postStatus();
+                new AlertDialog.Builder(VideoPlayActivity.this, R.style.alertDialog)
+                        .setMessage("Share Location Of This Status?")
+                        .setPositiveButton("Share", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                mLocationAllowed = true;
+                                postStatus();
+                            }
+                        })
+                        .setNegativeButton("No, Please", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                postStatus();
+                            }
+                        })
+                        .show();
             }
         });
 
-        mAudioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
-        mAudioBecomingNoisy = new AudioBecomingNoisy();
-        mNoisyIntentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+
     }
 
     private void postStatus() {
+        if (mVideoView.isPlaying())
+            mVideoView.pause();
         mDescription = mDescriptionEditText.getText().toString();
         //even if mLocationAllowed was allowed by user, if there is no LatLng available then set mLocationAllowed to false
         if (mLatitude == 0 && mLongitude == 0)
             mLocationAllowed = false;
 
-        final StorageReference filepath = mStorageReference.child(RandomStringGenerator.randomString() + ".jpg");
+        final StorageReference filepath = mStorageReference.child(RandomStringGenerator.randomString());
         UploadTask uploadTask = filepath.putFile(mVideoUri);
-        uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+        uploadTask.addOnCompleteListener(new OnCompleteListener<UploadTask.TaskSnapshot>() {
             @Override
-            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                String downloadUrl = Objects.requireNonNull(filepath.getDownloadUrl(), "Download Url Can't Be Null").toString();
-                Stories story = new Stories(mLocationAllowed, downloadUrl,
-                        mDescription, System.currentTimeMillis(), mLatitude, mLongitude, "video",
-                        mUserPhone);
-                story.setKey(mDatabaseReference.push().getKey());
-                mDatabaseReference.push().setValue(story).addOnCompleteListener(new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        if (task.isSuccessful()) {
-                            Toast.makeText(getApplicationContext(), "Successfully created story", Toast.LENGTH_SHORT).show();
-                            finish();
-                        } else
-                            Toast.makeText(getApplicationContext(), "Couldn't create story", Toast.LENGTH_SHORT).show();
-                    }
-                });
+            public void onComplete(@NonNull Task<UploadTask.TaskSnapshot> task) {
+                if (task.isSuccessful()){
+                    filepath.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                        @Override
+                        public void onSuccess(Uri uri) {
+                            Stories story = new Stories(mLocationAllowed, uri.toString(),
+                                    mDescription, System.currentTimeMillis(), mLatitude, mLongitude, "video",
+                                    mUserPhone);
+                            String key = mDatabaseReference.push().getKey();
+                            story.setKey(key);
+                            mDatabaseReference.child(key).setValue(story).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    if (task.isSuccessful()) {
+                                        Toast.makeText(getApplicationContext(), "Successfully created story", Toast.LENGTH_SHORT).show();
+                                        finish();
+                                    } else
+                                        Toast.makeText(getApplicationContext(), "Couldn't create story", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+                    });
+                }else{
+                    //resume video play
+                    mVideoView.resume();
+                    Toast.makeText(getApplicationContext(), "Couldn't upload story", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
 
+    private MediaPlayer.OnCompletionListener mCompletionListener = new MediaPlayer.OnCompletionListener() {
+        @Override
+        public void onCompletion(MediaPlayer mp) {
+            mp.seekTo(0);
+            mp.start();
+        }
+    };
+
     @Override
     protected void onStop() {
-        if (mMediaPlayer != null) {
-            mMediaPlayer.stop();
-            mMediaPlayer.release();
-            mMediaPlayer = null;
-        }
+        if (mVideoView.isPlaying())
+            mVideoView.stopPlayback();
         super.onStop();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        mediaPause();
+        if (mVideoView.isPlaying())
+            mVideoView.pause();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (mMediaPlayer == null) {
-            SurfaceHolder surfaceHolder = mSurfaceView.getHolder();
-            surfaceHolder.addCallback(this);
+        if (mVideoView != null && mVideoUri != null) {
+        mVideoView.resume();
         }
     }
 
-    private void mediaPlay() {
-        registerReceiver(mAudioBecomingNoisy, mNoisyIntentFilter);
-        int requestAudioFocusResult = mAudioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
-        if (requestAudioFocusResult == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-            mMediaPlayer.start();
-        }
-    }
-
-    private void mediaPause() {
-        mMediaPlayer.pause();
-        mAudioManager.abandonAudioFocus(this);
-        unregisterReceiver(mAudioBecomingNoisy);
-    }
-
-    private MediaPlayer.OnCompletionListener mMediaPlayerOnCompleteListener = new MediaPlayer.OnCompletionListener() {
-        @Override
-        public void onCompletion(MediaPlayer mp) {
-            // video was played till the end have to revise this function
-            mp.reset();
-            mediaPlay();
-
-        }
-    };
 
     @Override
-    public void surfaceCreated(SurfaceHolder holder) {
-        mMediaPlayer = MediaPlayer.create(this, mVideoUri, holder);
-        mMediaPlayer.setOnCompletionListener(mMediaPlayerOnCompleteListener);
-        mediaPlay();
+    public void onBackPressed() {
+        super.onBackPressed();
+        finish();
     }
-
-    @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
-
-    }
-
-    @Override
-    public void onAudioFocusChange(int audioFocusChanged) {
-        switch (audioFocusChanged) {
-            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-                mediaPause();
-                break;
-
-            case AudioManager.AUDIOFOCUS_GAIN:
-                mediaPlay();
-                break;
-            case AudioManager.AUDIOFOCUS_LOSS:
-                mediaPause();
-                break;
-        }
-    }
-
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        View decorView = getWindow().getDecorView();
-        if (hasFocus) {
-            decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    | View.SYSTEM_UI_FLAG_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-            );
-        }
-    }
-
 }

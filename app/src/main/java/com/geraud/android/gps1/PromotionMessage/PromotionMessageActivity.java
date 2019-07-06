@@ -11,6 +11,7 @@ import android.widget.Toast;
 import com.geraud.android.gps1.Models.PromotionMessage;
 import com.geraud.android.gps1.Models.Subscription;
 import com.geraud.android.gps1.Models.User;
+import com.geraud.android.gps1.OneSignal.NotificationOpenHandler;
 import com.geraud.android.gps1.R;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
@@ -36,10 +37,10 @@ public class PromotionMessageActivity extends AppCompatActivity {
         setContentView(R.layout.activity_promotion_message);
 
         //get phone
-        mUserPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User is null").getPhoneNumber();
+        mUserPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Phone is null").getPhoneNumber();
         //get notification content
         promotionMessage = (PromotionMessage) Objects.requireNonNull(getIntent().getExtras(), "promotion message is null")
-                .getSerializable("promotionMessage");
+                .getSerializable(NotificationOpenHandler.PROMOTION_MSG);
         //get user object
         mDatabase.child("USER").child(mUserPhone).child("info").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override

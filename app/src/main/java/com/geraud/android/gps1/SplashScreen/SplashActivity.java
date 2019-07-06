@@ -4,16 +4,17 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.widget.Toast;
 
-import com.facebook.drawee.backends.pipeline.Fresco;
 import com.geraud.android.gps1.GoogleMap.MapsActivity;
 import com.geraud.android.gps1.Onboarding_slides.Walkthrough;
 import com.geraud.android.gps1.Registration;
-import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.onesignal.OneSignal;
 
 public class SplashActivity extends AppCompatActivity {
+    public final static String SHARED_PREF = "Logi_Shared_Preferences";
+    public final static String FIRST_START = "firstStart";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,11 +22,12 @@ public class SplashActivity extends AppCompatActivity {
 
         boolean loggedIn = FirebaseAuth.getInstance().getCurrentUser() != null;
 
-        SharedPreferences sharedPreferences = getSharedPreferences("mSharedPreferences", MODE_PRIVATE);
-        boolean firstStart = sharedPreferences.getBoolean("firstStart", true);
+        SharedPreferences sharedPreferences = getSharedPreferences(SHARED_PREF, MODE_PRIVATE);
+        boolean firstStart = sharedPreferences.getBoolean(FIRST_START, true);
 
-        //if its the first time the user starts the app send him to walkthrough activity
+        //if its the first time the user starts the app send them to walkthrough activity
         if (firstStart) {
+            Toast.makeText(getApplicationContext(),"firstStart",Toast.LENGTH_SHORT).show();
             startActivity(new Intent(getApplicationContext(), Walkthrough.class)); //goto walkthrough
             //close splash activity
             finish();

@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <SurfaceView
+    <VideoView
         android:id="@+id/videoSurfaceView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

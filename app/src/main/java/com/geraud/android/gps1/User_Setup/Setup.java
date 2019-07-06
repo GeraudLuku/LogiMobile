@@ -28,6 +28,7 @@ import com.geraud.android.gps1.GoogleMap.MapsActivity;
 import com.geraud.android.gps1.Models.User;
 import com.geraud.android.gps1.R;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -55,8 +56,6 @@ public class Setup extends AppCompatActivity {
     private DatabaseReference mDatabaseReference;
     private GeoFire mGeoFire;
 
-    private Location mLocation;
-
     private ImageView mUserImage;
     private EditText mUserName;
     private TextView mLocationView;
@@ -82,17 +81,6 @@ public class Setup extends AppCompatActivity {
         mUserName = findViewById(R.id.name);
         mDoneButton = findViewById(R.id.submit);
         mProgressBar = findViewById(R.id.progress_bar);
-        mLocationView = findViewById(R.id.locationView);
-
-        //check location services permissions
-        if (checkPermission()) {
-            LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-            mLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            //show user its approximated current location
-            if (mLocation != null)
-                mLocationView.setText(String.format(Locale.getDefault(), "(Approximately)Currently Located At LAT: %.2f And LONG: %.2f", mLocation.getLatitude(), mLocation.getLongitude()));
-        } else
-            requestPermission();
 
         //image click listener to send the person to choose an image
         mUserImage.setOnClickListener(new View.OnClickListener() {
@@ -101,7 +89,8 @@ public class Setup extends AppCompatActivity {
                 //CALL THE IMAGE CROPPER LIBRARY TO CROP THE SELECTED IMAGE
                 CropImage.activity()
                         .setGuidelines(CropImageView.Guidelines.ON)
-                        .setMinCropResultSize(512, 512)
+                        .setActivityTitle("Profile Image")
+                        .setMinCropResultSize(600, 600)
                         .setAspectRatio(1, 1)
                         .start(Setup.this);
 
@@ -124,47 +113,52 @@ public class Setup extends AppCompatActivity {
                         public void onComplete(@NonNull Task<UploadTask.TaskSnapshot> task) {
                             if (task.isSuccessful()) {
                                 //gets the download uri of the file successfully uploaded to the storage and pass it as a string to downloadURI
-                                mImageDownloadUri = Objects.requireNonNull(filepath.getDownloadUrl(), "Download Url Cant Be Null").toString();
-                                //get the notification key
-                                OneSignal.idsAvailable(new OneSignal.IdsAvailableHandler() {
+                                filepath.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
                                     @Override
-                                    public void idsAvailable(String userId, String registrationId) {
-                                        //storing post info and data on firebase real-time database
-                                        User user = new User(name, "user", mImageDownloadUri, 0, mFirebaseUser.getPhoneNumber(), userId);
-
-                                        //save in real-time database
-                                        mDatabaseReference.child("USER").child(mFirebaseUser.getPhoneNumber()).child("userInfo").setValue(user).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    public void onSuccess(Uri uri) {
+                                        mImageDownloadUri = uri.toString();
+                                        //get the notification key
+                                        OneSignal.idsAvailable(new OneSignal.IdsAvailableHandler() {
                                             @Override
-                                            public void onComplete(@NonNull Task<Void> task) {
-                                                if (task.isSuccessful()) {
-                                                    //if all the data was saved successfully in the database
-                                                    //i also want to add the location of the user in the database using geoFire
-                                                    if (mLocation != null)
-                                                        mGeoFire.setLocation(mFirebaseUser.getPhoneNumber(), new GeoLocation(mLocation.getLatitude(), mLocation.getLongitude()), new GeoFire.CompletionListener() {
-                                                            @Override
-                                                            public void onComplete(String key, DatabaseError error) {
-                                                                if (error != null) {//there was an error
-                                                                    Toast.makeText(Setup.this, "Couldn't upload Location To Database", Toast.LENGTH_SHORT).show();
-                                                                    mProgressBar.setVisibility(View.INVISIBLE);
-                                                                    mDoneButton.setVisibility(View.VISIBLE);
-                                                                } else {
-                                                                    Toasty.success(getApplicationContext(), "Successfully Updated Account Info!", Toast.LENGTH_SHORT, true).show();
-                                                                    startActivity(new Intent(getApplicationContext(), MapsActivity.class));  // Welcome to the main app
-                                                                    finish();
-                                                                }
-                                                            }
-                                                        });
+                                            public void idsAvailable(String userId, String registrationId) {
+                                                //storing post info and data on firebase real-time database
+                                                User data = new User(name, "user", mImageDownloadUri, 0, mFirebaseUser.getPhoneNumber(), userId);
 
-                                                } else {
-                                                    //if there was an error
-                                                    Toasty.error(getApplicationContext(), "Couldn't Create Account Check Your Internet Connection", Toast.LENGTH_SHORT, true).show();
-                                                    mProgressBar.setVisibility(View.INVISIBLE);
-                                                    mDoneButton.setVisibility(View.VISIBLE);
-                                                }
+                                                //save in real-time database
+                                                mDatabaseReference.child("USER").child(mFirebaseUser.getPhoneNumber()).child("userInfo").setValue(data).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                    @Override
+                                                    public void onComplete(@NonNull Task<Void> task) {
+                                                        if (task.isSuccessful()) {
+                                                            //if all the data was saved successfully in the database
+                                                            //i also want to add the location of the user in the database using geoFire
+                                                            mGeoFire.setLocation(mFirebaseUser.getPhoneNumber(), new GeoLocation(0,0), new GeoFire.CompletionListener() {
+                                                                @Override
+                                                                public void onComplete(String key, DatabaseError error) {
+                                                                    if (error != null) {//there was an error
+                                                                        Toast.makeText(Setup.this, "Couldn't upload Location To Database", Toast.LENGTH_SHORT).show();
+                                                                        mProgressBar.setVisibility(View.INVISIBLE);
+                                                                        mDoneButton.setVisibility(View.VISIBLE);
+                                                                    } else {
+                                                                        Toasty.success(getApplicationContext(), "Successfully Updated Account Info!", Toast.LENGTH_SHORT, true).show();
+                                                                        startActivity(new Intent(getApplicationContext(), MapsActivity.class));  // Welcome to the main app
+                                                                        finish();
+                                                                    }
+                                                                }
+                                                            });
+
+                                                        } else {
+                                                            //if there was an error
+                                                            Toasty.error(getApplicationContext(), "Couldn't Create Account Check Your Internet Connection", Toast.LENGTH_SHORT, true).show();
+                                                            mProgressBar.setVisibility(View.INVISIBLE);
+                                                            mDoneButton.setVisibility(View.VISIBLE);
+                                                        }
+                                                    }
+                                                });
                                             }
                                         });
                                     }
                                 });
+
 
                             } else {
                                 Toasty.error(getApplicationContext(), "Couldn't Upload Profile Picture Check Your Internet Connection", Toast.LENGTH_SHORT, true).show();
@@ -218,15 +212,9 @@ public class Setup extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
             case REQUEST_CODE:
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED)
                     Toast.makeText(getApplicationContext(), "Location Permissions Granted", Toast.LENGTH_SHORT).show();
-                    if (checkPermission()) {
-                        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-                        mLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                        //show user its approximated current location
-                        mLocationView.setText(String.format(Locale.getDefault(), "(Approximately)Currently Located At LAT: %.2f And LONG: %.2f", mLocation.getLatitude(), mLocation.getLongitude()));
-                    }
-                } else
+                else
                     Toast.makeText(getApplicationContext(), "App Needs Permission To Work", Toast.LENGTH_SHORT).show();
                 break;
 

@@ -15,10 +15,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.geraud.android.gps1.GoogleMap.MapsActivity;
 import com.geraud.android.gps1.Models.Stories;
 import com.geraud.android.gps1.R;
 import com.geraud.android.gps1.RecyclerAdapter.StoriesRecyclerAdapter;
-import com.geraud.android.gps1.Utils.Contacts;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -26,6 +26,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 
 public class BodyFragment extends Fragment {
@@ -35,8 +36,8 @@ public class BodyFragment extends Fragment {
     private DatabaseReference mDatabaseReference;
 
     private ArrayList<Stories> mStoriesList;
-    private Contacts mContacts;
-    private StoriesRecyclerAdapter mStoriesRecyclerView;
+    private ArrayList<String> mContacts;
+    private StoriesRecyclerAdapter storiesRecyclerAdapter;
 
     private Stories mStories;
 
@@ -51,19 +52,19 @@ public class BodyFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        View view = inflater.inflate(R.layout.fragment_body, container, true);
+        View view = inflater.inflate(R.layout.fragment_body, container, false);
         mContext = getContext();
 
-        mContacts = new Contacts(mContext);
+        mContacts = Objects.requireNonNull(getArguments(),"body bundle is null").getStringArrayList(MapsActivity.CONTACTS);
 
         mStories = new Stories();
         mStoriesList = new ArrayList<>();
 
         mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORY");
 
-        mStoriesRecyclerView = new StoriesRecyclerAdapter(mStoriesList, getContext());
+        storiesRecyclerAdapter = new StoriesRecyclerAdapter(mStoriesList, mContext);
         RecyclerView mRecyclerView = view.findViewById(R.id.story_body_recycler);
-        mRecyclerView.setAdapter(mStoriesRecyclerView);
+        mRecyclerView.setAdapter(storiesRecyclerAdapter);
         mRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
         //cycle via all mContactList and get their mStories with a childEventListener
@@ -72,12 +73,11 @@ public class BodyFragment extends Fragment {
         else
             requestPermission();
 
-
         return view;
     }
 
     private void loadStories() {
-        for (String contact : mContacts.getAllContacts())
+        for (String contact : mContacts)
             mDatabaseReference.child(contact).addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -86,7 +86,7 @@ public class BodyFragment extends Fragment {
                             mStories.addStoryToArray(dc.getValue(Stories.class));
 
                         mStoriesList.add(mStories);
-                        mStoriesRecyclerView.notifyDataSetChanged();
+                        storiesRecyclerAdapter.notifyDataSetChanged();
                     }
                 }
 

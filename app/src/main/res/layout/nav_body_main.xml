@@ -5,6 +5,8 @@
     android:layout_margin="5dp">
 
     <fragment
+        class="com.geraud.android.gps1.Stories.BodyFragment"
+        android:name="com.geraud.android.gps1.Stories.BodyFragment"
         android:id="@+id/story_body_fragment"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

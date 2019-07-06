@@ -32,7 +32,7 @@
         android:layout_marginStart="13dp"
         android:layout_marginTop="27dp"
         android:layout_toEndOf="@+id/userImage"
-        android:textColor="@color/black"
+        android:textColor="@color/colorAccent"
         tools:text="Geraud Luku" />
 
     <TextView
@@ -46,25 +46,13 @@
         tools:text="12:40 PM" />
 
     <ImageButton
-        android:id="@+id/gotoLocationButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/layoutBars"
-        android:layout_alignParentEnd="true"
-        android:layout_marginTop="17dp"
-        android:layout_marginEnd="13dp"
-        android:background="@android:color/transparent"
-        android:src="@drawable/story_location"
-        android:contentDescription="@string/to" />
-
-    <ImageButton
         android:id="@+id/chatButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/layoutBars"
         android:layout_alignParentEnd="true"
-        android:layout_marginTop="17dp"
-        android:layout_marginEnd="57dp"
+        android:layout_marginTop="27dp"
+        android:layout_marginEnd="20dp"
         android:background="@android:color/transparent"
         android:contentDescription="@string/to"
         android:src="@drawable/story_chat" />

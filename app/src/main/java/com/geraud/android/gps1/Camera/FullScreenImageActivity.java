@@ -22,6 +22,7 @@ import android.widget.Toast;
 import com.bumptech.glide.Glide;
 import com.geraud.android.gps1.Models.Stories;
 import com.geraud.android.gps1.R;
+import com.geraud.android.gps1.Stories.HeaderFragment;
 import com.geraud.android.gps1.Utils.RandomStringGenerator;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -36,8 +37,8 @@ import com.google.firebase.storage.UploadTask;
 import java.util.Objects;
 
 public class FullScreenImageActivity extends AppCompatActivity {
-//    public static final String URI_EXTRA = "uri";
-//    public static final String TEXT_EXTRA = "text";
+    public static final String URI_EXTRA = "uri";
+    public static final String TEXT_EXTRA = "text";
     private static final int REQUEST_PERMISSION = 0;
 
     private EditText mDescriptionInput;
@@ -47,9 +48,6 @@ public class FullScreenImageActivity extends AppCompatActivity {
 
     private StorageReference mStorageReference;
     private DatabaseReference mDatabaseReference;
-
-    private LocationManager mLocationManager;
-    private Location mLocation;
 
     private boolean mLocationAllowed = false;
     private double mLatitude = 0;
@@ -77,21 +75,17 @@ public class FullScreenImageActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_full_screen_image);
 
+        //get latitude and longitude
+        if (getIntent() != null) {
+            mLatitude = getIntent().getDoubleExtra(HeaderFragment.HEADER_LAT, 0);
+            mLongitude = getIntent().getDoubleExtra(HeaderFragment.HEADER_LNG, 0);
+        }
+
 
         mUserPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Cant Be Null").getPhoneNumber();
         if (mUserPhone != null) {
             mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("STORY").child(mUserPhone);
             mStorageReference = FirebaseStorage.getInstance().getReference().child("STORY").child(mUserPhone);
-        }
-
-        mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_PERMISSION);
-        } else {
-            mLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            mLongitude = mLocation.getLongitude();
-            mLatitude = mLocation.getLatitude();
         }
 
         ImageView fullScreenImageView = findViewById(R.id.fullScreenImageView);
@@ -118,17 +112,22 @@ public class FullScreenImageActivity extends AppCompatActivity {
 //                    startActivity(transferIntent);
 //                    finish();
 //                } else
-                    new AlertDialog.Builder(getApplicationContext())
+                    new AlertDialog.Builder(FullScreenImageActivity.this,R.style.alertDialog)
                             .setMessage("Share Location Of This Media?")
                             .setPositiveButton("Share", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
                                     mLocationAllowed = true;
+                                    postStatus();
                                 }
                             })
-                            .setNegativeButton("No, Please", null)
+                            .setNegativeButton("No, Please", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    postStatus();
+                                }
+                            })
                             .show();
-                postStatus();
             }
         });
     }
@@ -146,41 +145,30 @@ public class FullScreenImageActivity extends AppCompatActivity {
         uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
             @Override
             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                String downloadUrl = Objects.requireNonNull(filepath.getDownloadUrl(), "Download Url Can't Be Null").toString();
-
-                Stories story = new Stories(mLocationAllowed, downloadUrl,
-                        mDescription, System.currentTimeMillis(), mLatitude, mLongitude, "image",
-                        mUserPhone);
-                story.setKey(mDatabaseReference.push().push().getKey()); //key of the document for deleting
-
-                mDatabaseReference.push().setValue(story).addOnCompleteListener(new OnCompleteListener<Void>() {
+                filepath.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
                     @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        if (task.isSuccessful()) {
-                            Toast.makeText(getApplicationContext(), "Successfully created story", Toast.LENGTH_SHORT).show();
-                            finish();
-                        } else
-                            Toast.makeText(getApplicationContext(), "Couldn't create story", Toast.LENGTH_SHORT).show();
+                    public void onSuccess(Uri uri) {
+                        String downloadUrl = uri.toString();
+                        String key = mDatabaseReference.push().getKey();
+                        Stories story = new Stories(mLocationAllowed, downloadUrl,
+                                mDescription, System.currentTimeMillis(), mLatitude, mLongitude, "image",
+                                mUserPhone);
+                        story.setKey(key); //key of the document for deleting
+
+                        mDatabaseReference.child(key).setValue(story).addOnCompleteListener(new OnCompleteListener<Void>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Void> task) {
+                                if (task.isSuccessful()) {
+                                    Toast.makeText(getApplicationContext(), "Successfully created story", Toast.LENGTH_SHORT).show();
+                                    finish();
+                                } else
+                                    Toast.makeText(getApplicationContext(), "Couldn't create story", Toast.LENGTH_SHORT).show();
+                            }
+                        });
                     }
                 });
             }
         });
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        switch (requestCode) {
-            case REQUEST_PERMISSION:
-                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                        ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(getApplicationContext(), "Coarse And Fine Location Permission Denied", Toast.LENGTH_SHORT).show();
-                }
-                mLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                mLongitude = mLocation.getLongitude();
-                mLatitude = mLocation.getLatitude();
-                Toast.makeText(getApplicationContext(), "Coarse And Fine Location Permission Granted", Toast.LENGTH_SHORT).show();
-        }
-    }
 }

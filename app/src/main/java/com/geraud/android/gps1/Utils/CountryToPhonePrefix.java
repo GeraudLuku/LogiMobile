@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class CountryToPhonePrefix {
 
-    private static Map<String, String> country2phone = new HashMap<String, String>();
+    private static Map<String, String> country2phone = new HashMap<>();
 
     static {
         country2phone.put("AF", "+93");
@@ -201,21 +201,21 @@ public class CountryToPhonePrefix {
         country2phone.put("YE", "+967");
         country2phone.put("ZM", "+260");
         country2phone.put("ZW", "+263");
-        country2phone.put("GE", "+995");
+//        country2phone.put("GE", "+995");
         country2phone.put("TW", "+886");
-        country2phone.put("AZ", "+374-97");
-        country2phone.put("CY", "+90-392");
-        country2phone.put("MD", "+373-533");
-        country2phone.put("SO", "+252");
-        country2phone.put("GE", "+995");
+//        country2phone.put("AZ", "+374-97");
+//        country2phone.put("CY", "+90-392");
+//        country2phone.put("MD", "+373-533");
+//        country2phone.put("SO", "+252");
+//        country2phone.put("GE", "+995");
         country2phone.put("CX", "+61");
         country2phone.put("CC", "+61");
         country2phone.put("NF", "+672");
         country2phone.put("NC", "+687");
         country2phone.put("PF", "+689");
         country2phone.put("YT", "+262");
-        country2phone.put("GP", "+590");
-        country2phone.put("GP", "+590");
+//        country2phone.put("GP", "+590");
+//        country2phone.put("GP", "+590");
         country2phone.put("PM", "+508");
         country2phone.put("WF", "+681");
         country2phone.put("CK", "+682");
@@ -245,7 +245,7 @@ public class CountryToPhonePrefix {
         country2phone.put("FO", "+298");
         country2phone.put("GL", "+299");
         country2phone.put("GF", "+594");
-        country2phone.put("GP", "+590");
+//        country2phone.put("GP", "+590");
         country2phone.put("MQ", "+596");
         country2phone.put("RE", "+262");
         country2phone.put("AX", "+358-18");

@@ -10,8 +10,10 @@ public class Place {
 
     private String key;
 
+    public Place() {
+    }
 
-    public Place(String key,String name, String creator, String description, String image_uri, String type, double latitude, double longitude, String des2) {
+    public Place(String key, String name, String creator, String description, String image_uri, String type, double latitude, double longitude, String des2) {
         this.key = key;
         this.name = name;
         this.creator = creator;

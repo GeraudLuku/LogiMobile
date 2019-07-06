@@ -67,6 +67,8 @@ public class PlacesActivity extends AppCompatActivity {
         placesRecyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext(), LinearLayoutManager.VERTICAL, false));
         mPlaceAdapter = new PlacesRecyclerAdapter(mPlaces, getApplicationContext(),mPhone);
         placesRecyclerView.setAdapter(mPlaceAdapter);
+
+        LoadPlaces();
     }
 
     public void checkButton(View v) {
@@ -76,7 +78,7 @@ public class PlacesActivity extends AppCompatActivity {
                 LoadPlaces();
                 break;
             case R.id.radio_two:
-                    LoadFriendsPlaces();
+                LoadFriendsPlaces();
                 break;
             default:
                 Toast.makeText(getApplicationContext(), "Cant Recognise Radio Option Selected", Toast.LENGTH_SHORT).show();

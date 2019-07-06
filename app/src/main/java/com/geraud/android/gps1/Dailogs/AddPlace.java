@@ -46,7 +46,7 @@ public class AddPlace extends AppCompatDialogFragment {
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(Objects.requireNonNull(getContext()));
+        AlertDialog.Builder builder = new AlertDialog.Builder(Objects.requireNonNull(getContext()),R.style.alertDialog);
 
         LayoutInflater inflater = Objects.requireNonNull(getActivity(), "AddPlace Get Activity Cant Be Null").getLayoutInflater();
         View view = inflater.inflate(R.layout.add_place, null);
@@ -82,7 +82,7 @@ public class AddPlace extends AppCompatDialogFragment {
                         .setGuidelines(CropImageView.Guidelines.ON)
                         .setMinCropResultSize(512, 512)
                         .setAspectRatio(1, 1)
-                        .start(Objects.requireNonNull(getActivity(), "AddPlace Get Activity Cant Be Null"));
+                        .start(getContext(),AddPlace.this);
             }
         });
 

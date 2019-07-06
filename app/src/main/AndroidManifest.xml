@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.geraud.android.gps1">
 
     <uses-feature
@@ -21,6 +22,7 @@
 
     <application
         android:name=".SplashScreen.ApplicationInit"
+        tools:replace="android:label"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Logi"
@@ -50,7 +52,7 @@
         </activity>
         <activity
             android:name="com.theartofdev.edmodo.cropper.CropImageActivity"
-            android:theme="@style/AppTheme" />
+            android:theme="@style/Theme.AppCompat" />
         <activity android:name=".User_Setup.Setup" />
         <activity
             android:name=".Onboarding_slides.Walkthrough"
@@ -70,7 +72,7 @@
         <activity
             android:name=".GoogleMap.MapsActivity"
             android:label="@string/title_activity_maps"
-            android:theme="@style/AppTheme" />
+            android:theme="@style/AppTheme"/>
         <activity android:name=".Registration">
             <intent-filter android:label="@string/filter_view_http_gizmos">
                 <action android:name="android.intent.action.VIEW" />
@@ -88,12 +90,9 @@
 
         <service
             android:name=".Services.GeoQueries"
-            android:enabled="true"
-            android:exported="true" />
+           />
         <service
-            android:name=".Services.SinchService"
-            android:enabled="true"
-            android:exported="true" />
+            android:name=".Services.SinchService" />
         <service
             android:name=".Services.OneSignal"
             android:exported="false">

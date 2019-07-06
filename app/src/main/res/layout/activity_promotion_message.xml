@@ -31,7 +31,7 @@
         android:scrollbars="vertical"
         android:textColor="@color/black"
         android:textSize="20sp"
-        Tools:text="@string/promotion_body" />
+        Tools:text="This is the body of the message" />
 
     <Button
         android:id="@+id/button"

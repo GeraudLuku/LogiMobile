@@ -2,21 +2,13 @@ package com.geraud.android.gps1;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Toast;
 
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.auth.ErrorCodes;
 import com.firebase.ui.auth.IdpResponse;
-import com.geraud.android.gps1.GoogleMap.MapsActivity;
 import com.geraud.android.gps1.User_Setup.Setup;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 
 import java.util.Collections;
 import java.util.List;
@@ -25,15 +17,11 @@ import java.util.Objects;
 import es.dmoral.toasty.Toasty;
 
 public class Registration extends AppCompatActivity {
-
     private static final int RC_SIGN_IN = 123;
-    private DatabaseReference mDatabaseReference;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        mDatabaseReference = FirebaseDatabase.getInstance().getReference("USER");
 
         //my app will support phone number authentication only
         List<AuthUI.IdpConfig> providers = Collections.singletonList(
@@ -62,25 +50,27 @@ public class Registration extends AppCompatActivity {
             if (resultCode == RESULT_OK) {
                 // Successfully signed in
                 Toasty.success(getApplicationContext(), "Successfully Authenticated", Toast.LENGTH_SHORT, true).show();
+                startActivity(new Intent(getApplicationContext(), Setup.class));
+                finish();
                 //if the phone number data already exists in the database send the user directly to the maps activity else if new user send the
                 //user to the setup activity
-                String phoneNumber = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "User Cant Be Null").getPhoneNumber();
-                if (phoneNumber != null) {
-                    mDatabaseReference.child(phoneNumber).child("userInfo").addListenerForSingleValueEvent(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                            if (dataSnapshot.exists())
-                                startActivity(new Intent(getApplicationContext(), MapsActivity.class));
-                            else
-                                startActivity(new Intent(getApplicationContext(), Setup.class));
-                        }
-
-                        @Override
-                        public void onCancelled(@NonNull DatabaseError databaseError) {
-                            Toast.makeText(Registration.this, "Registration ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                }
+//                String phoneNumber = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "User Cant Be Null").getPhoneNumber();
+//                if (phoneNumber != null) {
+//                    mDatabaseReference.child(phoneNumber).child("userInfo").addListenerForSingleValueEvent(new ValueEventListener() {
+//                        @Override
+//                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+//                            if (dataSnapshot.exists())
+//                                startActivity(new Intent(getApplicationContext(), MapsActivity.class));
+//                            else
+//                                startActivity(new Intent(getApplicationContext(), Setup.class));
+//                        }
+//
+//                        @Override
+//                        public void onCancelled(@NonNull DatabaseError databaseError) {
+//                            Toast.makeText(Registration.this, "Registration ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
+//                        }
+//                    });
+//                }
 
                 // ...
             } else {

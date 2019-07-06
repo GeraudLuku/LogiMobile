@@ -36,10 +36,6 @@ public class PlacesMarkerInfoWindow implements GoogleMap.InfoWindowAdapter {
         Gson gson = new Gson();
         Place placeInfo = gson.fromJson(marker.getSnippet(), Place.class);
 
-        final List<String> mImages = new ArrayList<>();
-        mImages.add(placeInfo.getImage_uri());
-
-
         //reference the title and snippetof the custom info Window
         TextView infotitle = v.findViewById(R.id.infoWindow_places_name);
         TextView infosnippet = v.findViewById(R.id.infoWindow_places_snippet);
@@ -48,19 +44,6 @@ public class PlacesMarkerInfoWindow implements GoogleMap.InfoWindowAdapter {
         infotitle.setText(placeInfo.getName());
         infosnippet.setText(placeInfo.getDescription());
         Glide.with(mContext).load(placeInfo.getImage_uri()).into(infoImage);
-
-        //on image view click show full screen on fresco
-        infoImage.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new ImageViewer.Builder(mContext, mImages)
-                        .setStartPosition(0)
-                        .show();
-            }
-        });
-
-
-
     }
 
     @Override

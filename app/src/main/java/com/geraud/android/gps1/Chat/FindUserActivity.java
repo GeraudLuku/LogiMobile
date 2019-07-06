@@ -46,7 +46,7 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
     private DatabaseReference mChatInfoDB;
     private DatabaseReference mUserDB;
 
-    private HashMap<String,Object> mNewChatMap;
+    private HashMap<String, Object> mNewChatMap;
     private HashMap<String, String> mGroupChatMap;
     private HashMap<String, String> mMyChatMap;
     private HashMap<String, String> mSingleChatMap;
@@ -170,39 +170,19 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
                         mUserDB.child(mUser.getPhone()).child("chat").child(key).setValue(mGroupChatMap); //chat id set in all the users documents
                 CreateGroupChat();
             } else {
-                //check if the chat already exists
-                DatabaseReference reference = FirebaseDatabase.getInstance().getReference().child("USER").child("chat");
-                Query query = reference.orderByChild("user").equalTo(mMyChatMap.get("user"));
-                query.addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        if (dataSnapshot.exists()) {
-                            //if the chat already exists, open the chat in chat activity
-                            Chat chat = new Chat(dataSnapshot.getKey());
-                            mChatList.add(chat);
-                            getChatData(chat.getChatId());
-                        } else {
-                            //if it doesn't exist create a new chat then......
-                            mNewChatMap.put("name", null);
-                            mNewChatMap.put("type", "single");
-                            mNewChatMap.put("image", null);
+                //if it doesn't exist create a new chat then......
+                mNewChatMap.put("name", null);
+                mNewChatMap.put("type", "single");
+                mNewChatMap.put("image", null);
 
-                            mChatInfoDB.updateChildren(mNewChatMap);
-                            mUserDB.child(mUserPhone).child("chat").child(key).setValue(mMyChatMap); //chat id set in my Document
-                            mUserDB.child(Objects.requireNonNull(mMyChatMap.get("user"),"myChatMap user can't be NUll")).child("chat").child(key).setValue(mSingleChatMap); // set chat id in the other users document
+                mChatInfoDB.updateChildren(mNewChatMap);
+                mUserDB.child(mUserPhone).child("chat").child(key).setValue(mMyChatMap); //chat id set in my Document
+                mUserDB.child(Objects.requireNonNull(mMyChatMap.get("user"), "myChatMap user can't be NUll")).child("chat").child(key).setValue(mSingleChatMap); // set chat id in the other users document
 
-                            //open chatActivity for this newly created chat
-                            Chat chat = new Chat(key);
-                            mChatList.add(chat);
-                            getChatData(chat.getChatId());
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                        Toast.makeText(getApplicationContext(), "reference ValueEventListener Cancelled", Toast.LENGTH_SHORT).show();
-                    }
-                });
+                //open chatActivity for this newly created chat
+                Chat chat = new Chat(key);
+                mChatList.add(chat);
+                getChatData(chat.getChatId());
 
             }
         } else
@@ -245,7 +225,7 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
 
                     //getting id of the chat
                     if (dataSnapshot.child("id").getValue() != null)
-                        chatId = Objects.requireNonNull(dataSnapshot.child("id").getValue(),"id can't be null").toString();
+                        chatId = Objects.requireNonNull(dataSnapshot.child("id").getValue(), "id can't be null").toString();
 
                     //getting all users
                     for (DataSnapshot userSnaphshot : dataSnapshot.child("users").getChildren())
@@ -275,7 +255,7 @@ public class FindUserActivity extends AppCompatActivity implements AddGroupChat.
                 User mUser = new User(dataSnapshot.getKey());
                 //getting notification key
                 if (dataSnapshot.child("notificationKey").getValue() != null)
-                    mUser.setNotificationKey(Objects.requireNonNull(dataSnapshot.child("notificationKey").getValue(),"NotificationKey Can't be null").toString());
+                    mUser.setNotificationKey(Objects.requireNonNull(dataSnapshot.child("notificationKey").getValue(), "NotificationKey Can't be null").toString());
 
                 for (Chat mChat : mChatList) {
                     for (User mUserIt : mChat.getUserObjectArrayList()) {

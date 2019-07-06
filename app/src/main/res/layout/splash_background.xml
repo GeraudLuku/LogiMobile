@@ -8,5 +8,7 @@
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:layout_centerVertical="true"
-        android:src="@drawable/logi_logo"/>
+
+        />
 </RelativeLayout>
+    <!--android:srcCompat="@drawable/logi_logo"-->

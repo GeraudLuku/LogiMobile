@@ -1,8 +1,6 @@
 package com.geraud.android.gps1.RecyclerAdapter;
 
-import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.location.Address;
 import android.location.Geocoder;
 import android.support.annotation.NonNull;
@@ -19,12 +17,12 @@ import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.geraud.android.gps1.Models.Place;
+import com.geraud.android.gps1.Models.User;
 import com.geraud.android.gps1.R;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.stfalcon.frescoimageviewer.ImageViewer;
 
@@ -32,7 +30,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 
 public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAdapter.ViewHolder> {
 
@@ -58,7 +55,7 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
     }
 
     @Override
-    public void onBindViewHolder(@NonNull final ViewHolder holder,  int position) {
+    public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
 
         // if its my place i can delete else i cant
         if (mPlacesList.get(position).getCreator().equals(mPhone))
@@ -72,19 +69,20 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
             Toast.makeText(mContext, "Couldn't Get Address Of Area", Toast.LENGTH_SHORT).show();
         }
         // town and country name
-        holder.mTown.setText(String.format(Locale.getDefault(), " %s - %s ", mAddress.get(position).getLocality(), mAddress.get(position).getCountryName()));
+        holder.mTown.setText(String.format(Locale.getDefault(), " %s - %s ", mAddress.get(0).getLocality(), mAddress.get(0).getCountryName()));
 
         //name of place
         holder.mName.setText(mPlacesList.get(position).getName());
 
         //creator of place
-        mReferenceDB.child("USER").child(mPlacesList.get(position).getCreator()).addListenerForSingleValueEvent(new ValueEventListener() {
+        mReferenceDB.child("USER").child(mPlacesList.get(position).getCreator()).child("userInfo").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists())
-                    for (DataSnapshot dc : dataSnapshot.getChildren())
-                        holder.mCreator.setText(String.format(Locale.getDefault(), " Creator : %s",
-                                Objects.requireNonNull(dc.child("name").getValue(), "Name Cant Be Null").toString()));
+            public void onDataChange(@NonNull DataSnapshot dc) {
+                if (dc.exists()){
+                    User user = dc.getValue(User.class);
+                    holder.mCreator.setText(String.format(Locale.getDefault(), " Creator : %s",
+                            user.getName()));
+                }
             }
 
             @Override
@@ -107,19 +105,7 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
             }
         });
 
-        holder.mGoto.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //send LatLng to Maps Activity
-                Intent returnIntent = new Intent();
-                returnIntent.putExtra("latitude", mPlacesList.get(holder.getAdapterPosition()).getLatitude());
-                returnIntent.putExtra("longitude", mPlacesList.get(holder.getAdapterPosition()).getLongitude());
-                ((Activity) mContext).setResult(Activity.RESULT_OK, returnIntent);
-                ((Activity) mContext).finish();
-            }
-        });
-
-        holder.mDeletePlace.setOnClickListener(new View.OnClickListener() {
+           holder.mDeletePlace.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 mReferenceDB.child("PLACE").child(mPlacesList.get(holder.getAdapterPosition()).getCreator()).child(mPlacesList.get(holder.getAdapterPosition()).getKey()).removeValue(new DatabaseReference.CompletionListener() {
@@ -145,7 +131,6 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
                 mName,
                 mCreator;
         ImageView mPlaceImage;
-        Button mGoto;
         ImageButton mDeletePlace;
 
         ViewHolder(@NonNull View itemView) {
@@ -154,7 +139,6 @@ public class PlacesRecyclerAdapter extends RecyclerView.Adapter<PlacesRecyclerAd
             mName = itemView.findViewById(R.id.sub_text);
             mCreator = itemView.findViewById(R.id.creator_text);
             mPlaceImage = itemView.findViewById(R.id.media_image);
-            mGoto = itemView.findViewById(R.id.action_button_1);
             mDeletePlace = itemView.findViewById(R.id.action_button_2);
         }
     }
