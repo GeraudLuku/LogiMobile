@@ -1591,7 +1591,7 @@ public class MapsActivity extends BaseActivity implements
                 @Override
                 public void run() {
                     if (mFriendsMarker != null)
-                        mFriendsMarker.remove();
+                        mFriendsMarker.remove(); //
                     for (final String contact : mContactList) {
                         //first query the users section of the database to get the Contact information
                         mDatabaseReference.child("USER").child(contact).child("userInfo").addListenerForSingleValueEvent(new ValueEventListener() {
