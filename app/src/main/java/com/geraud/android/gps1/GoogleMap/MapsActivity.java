@@ -385,7 +385,7 @@ public class MapsActivity extends BaseActivity implements
                     textView.setText(getString(R.string.hide_location));
                     if (mFusedLocationClient != null) {
                         mFusedLocationClient.removeLocationUpdates(mLocationCallback);
-                        mGeoFire.removeLocation(USER_KEY, mGeofireCompletionListener);
+                        //mGeoFire.removeLocation(USER_KEY, mGeofireCompletionListener);
                     }
                 }
             }
@@ -1483,6 +1483,7 @@ public class MapsActivity extends BaseActivity implements
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         final Branch branch = dataSnapshot.getValue(Branch.class);
                         final String BranchJSON = mGson.toJson(branch);
+                        final Bitmap bitmap = scaleMarker(PlacesTypeToDrawable.getDrawable(branch.getType()));
                         //get location
                         mLocationReference.child(subscription.getBranchId()).child("l").addListenerForSingleValueEvent(new ValueEventListener() {
                             @Override
@@ -1502,7 +1503,7 @@ public class MapsActivity extends BaseActivity implements
                                             .position(new LatLng(locationLat, locationLng))
                                             .title("branch")
                                             .snippet(BranchJSON)
-                                            .icon(BitmapDescriptorFactory.fromResource(PlacesTypeToDrawable.getDrawable(branch != null ? branch.getType() : null)))
+                                            .icon(BitmapDescriptorFactory.fromBitmap(bitmap))
                                             .draggable(false)
                                     );
 
@@ -1559,13 +1560,14 @@ public class MapsActivity extends BaseActivity implements
                         if (dataSnapshot.exists())
                             for (DataSnapshot dc : dataSnapshot.getChildren()) {
                                 Place myPlace = dc.getValue(Place.class);
+                                Bitmap bitmap = scaleMarker(PlacesTypeToDrawable.getDrawable(myPlace != null ? myPlace.getDesc2() : null));
                                 //create JSON object to send the info to infoWindow adapter through the snippet
                                 String PlaceJSON = mGson.toJson(myPlace);
                                 mFriendPlace = mMap.addMarker(new MarkerOptions()
                                         .position(new LatLng(myPlace != null ? myPlace.getLatitude() : 0, myPlace != null ? myPlace.getLongitude() : 0))
                                         .title(myPlace != null ? myPlace.getType() : "place")
                                         .snippet(PlaceJSON)
-                                        .icon(BitmapDescriptorFactory.fromResource(PlacesTypeToDrawable.getDrawable(myPlace != null ? myPlace.getDesc2() : null)))
+                                        .icon(BitmapDescriptorFactory.fromBitmap(bitmap))
                                         .draggable(false)
                                 );
                             }

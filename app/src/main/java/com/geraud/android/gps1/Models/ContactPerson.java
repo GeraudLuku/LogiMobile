@@ -1,10 +1,13 @@
 package com.geraud.android.gps1.Models;
 
 public class ContactPerson {
-    private String position
-            ,phone;
+    private String position;
+    private long phone;
 
-    public ContactPerson(String position, String phone) {
+    public ContactPerson() {
+    }
+
+    public ContactPerson(String position, long phone) {
         this.position = position;
         this.phone = phone;
     }
@@ -17,11 +20,11 @@ public class ContactPerson {
         this.position = position;
     }
 
-    public String getPhone() {
+    public long getPhone() {
         return phone;
     }
 
-    public void setPhone(String phone) {
+    public void setPhone(long phone) {
         this.phone = phone;
     }
 }

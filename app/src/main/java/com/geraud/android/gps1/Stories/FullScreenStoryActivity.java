@@ -110,12 +110,9 @@ public class FullScreenStoryActivity extends AppCompatActivity {
 
         mStoriesSliderAdapter = new StoriesSliderAdapter(getApplicationContext(), mStoriesList);
 
-        addBottomDots(0);
-
         //on viewpager touch hide all views
         ViewPager viewPager = findViewById(R.id.viewPager);
         viewPager.setAdapter(mStoriesSliderAdapter);
-        viewPager.addOnPageChangeListener(viewPagerPageChangeListener);
         viewPager.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -149,27 +146,6 @@ public class FullScreenStoryActivity extends AppCompatActivity {
             );
         }
     }
-
-    ViewPager.OnPageChangeListener viewPagerPageChangeListener = new ViewPager.OnPageChangeListener() {
-        @Override
-        public void onPageScrolled(int i, float v, int i1) {
-
-        }
-
-        @Override
-        public void onPageSelected(int position) {
-            addBottomDots(position);
-
-            if (position > mStoriesSliderAdapter.getCount() - 1) // if you scroll pass the last slide, end the activity
-                finish();
-
-        }
-
-        @Override
-        public void onPageScrollStateChanged(int i) {
-
-        }
-    };
 
     private void visibility(Boolean visible) {
         if (visible) {

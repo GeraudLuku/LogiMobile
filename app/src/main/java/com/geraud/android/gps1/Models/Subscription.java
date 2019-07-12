@@ -3,6 +3,8 @@ package com.geraud.android.gps1.Models;
 public class Subscription {
     private String branchId,companyId;
 
+    public Subscription(){}
+
     public Subscription(String branchId, String companyId) {
         this.branchId = branchId;
         this.companyId = companyId;

@@ -6,6 +6,8 @@ public class PromotionMessage implements Serializable {
     private String title, body, branchId, companyId;
     private long timestamp;
 
+    public PromotionMessage(){}
+
     public PromotionMessage(String title, String body, String branchId, long timestamp, String companyId) {
         this.title = title;
         this.body = body;

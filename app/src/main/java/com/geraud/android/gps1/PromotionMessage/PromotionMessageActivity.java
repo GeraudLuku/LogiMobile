@@ -36,6 +36,8 @@ public class PromotionMessageActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_promotion_message);
 
+        mDatabase = FirebaseDatabase.getInstance().getReference();
+
         //get phone
         mUserPhone = Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser(), "Current User Phone is null").getPhoneNumber();
         //get notification content

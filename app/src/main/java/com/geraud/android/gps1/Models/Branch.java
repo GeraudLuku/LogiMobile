@@ -9,6 +9,8 @@ public class Branch {
             ,type;
     private ContactPerson contactPerson;
 
+    public Branch(){}
+
     public Branch(String companyId, String workingTime, String postalAddress, String managingDirector, String name, String type, ContactPerson contactPerson) {
         this.companyId = companyId;
         this.workingTime = workingTime;

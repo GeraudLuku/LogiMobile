@@ -9,6 +9,10 @@ public class ChatInfo implements Serializable {
             type;
     private Message lastMessage;
 
+    public ChatInfo(){
+
+    }
+
     public ChatInfo(String id, String image, String name, String type, Message lastMessage) {
         this.id = id;
         this.image = image;

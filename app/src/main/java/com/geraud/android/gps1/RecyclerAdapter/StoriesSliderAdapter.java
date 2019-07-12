@@ -47,10 +47,6 @@ public class StoriesSliderAdapter extends PagerAdapter {
         return mStoriesList.size();
     }
 
-    public int getCurrentPosition() {
-        return mPosition;
-    }
-
     @Override
     public boolean isViewFromObject(@NonNull View view, @NonNull Object o) {
         return view == o;
@@ -63,7 +59,7 @@ public class StoriesSliderAdapter extends PagerAdapter {
         LayoutInflater layoutInflater = (LayoutInflater) mContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         mPosition = position;
 
-        if (mStoriesList.get(position).getType().equals("image")) {
+//        if (mStoriesList.get(position).getType().equals("image")) {
             mView = layoutInflater.inflate(R.layout.image_story_slide_layout, container, false);
             container.addView(mView);
 
@@ -84,45 +80,42 @@ public class StoriesSliderAdapter extends PagerAdapter {
 
             return mView;
 
-        } else {
-            mView = layoutInflater.inflate(R.layout.video_story_slide_layout, container, false);
-            final ProgressBar progressBar = mView.findViewById(R.id.bufferProgress);
-            container.addView(mView);
-
-            mVideoView = mView.findViewById(R.id.videoView);
-            TextView mVideoTextView = mView.findViewById(R.id.videoDescription);
-            View line = mView.findViewById(R.id.view);
-
-            //load video on videoView
-            mVideoView.setVideoPath(mStoriesList.get(position).getMedia());
-            mVideoView.requestFocus();
-            //buffering listener for the video
-            mVideoView.setOnInfoListener(new MediaPlayer.OnInfoListener() {
-                @Override
-                public boolean onInfo(MediaPlayer mp, int what, int extra) {
-                    if (what == mp.MEDIA_INFO_BUFFERING_START) {
-                        progressBar.setVisibility(View.VISIBLE);
-                    } else if (what == mp.MEDIA_INFO_BUFFERING_END) {
-                        progressBar.setVisibility(View.INVISIBLE);
-                    }
-                    return false;
-                }
-            });
-            mVideoView.start();
-
-            mVideoView.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                @Override
-                public void onCompletion(MediaPlayer mp) {
-                    mp.seekTo(0);
-                    mp.start();
-                }
-            });
-
-            //load description text
-            if (mStoriesList.get(position).getDescription().equals(""))
-                line.setVisibility(View.INVISIBLE);
-
-            return mView;
+//        } else {
+//            mView = layoutInflater.inflate(R.layout.video_story_slide_layout, container, false);
+//            final ProgressBar progressBar = mView.findViewById(R.id.bufferProgress);
+//            container.addView(mView);
+//
+//            mVideoView = mView.findViewById(R.id.videoView);
+//            TextView mVideoTextView = mView.findViewById(R.id.videoDescription);
+//            View line = mView.findViewById(R.id.view);
+//
+//            //load video on videoView
+//            mVideoView.setVideoPath(mStoriesList.get(position).getMedia());
+//            mVideoView.requestFocus();
+//            //buffering listener for the video
+//            mVideoView.setOnInfoListener(new MediaPlayer.OnInfoListener() {
+//                @Override
+//                public boolean onInfo(MediaPlayer mp, int what, int extra) {
+//                    if (what == mp.MEDIA_INFO_BUFFERING_START) {
+//                        progressBar.setVisibility(View.VISIBLE);
+//                    } else if (what == mp.MEDIA_INFO_BUFFERING_END) {
+//                        progressBar.setVisibility(View.INVISIBLE);
+//                    }
+//                    return false;
+//                }
+//            });
+//            mVideoView.start();
+//
+//            mVideoView.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+//                @Override
+//                public void onCompletion(MediaPlayer mp) {
+//                    mp.seekTo(0);
+//                    mp.start();
+//                }
+//            });
+//
+//            //load description text
+//            if (mStoriesList.get(position).getDescription().equals(""))
+//                line.setVisibility(View.INVISIBLE);
         }
     }
-}

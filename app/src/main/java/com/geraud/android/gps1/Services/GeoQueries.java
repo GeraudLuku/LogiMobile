@@ -1,23 +1,30 @@
 package com.geraud.android.gps1.Services;
 
 import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.location.Address;
 import android.location.Geocoder;
 import android.os.Binder;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.widget.Toast;
 
 import com.firebase.geofire.GeoFire;
 import com.firebase.geofire.GeoLocation;
 import com.firebase.geofire.GeoQuery;
 import com.firebase.geofire.GeoQueryEventListener;
+import com.geraud.android.gps1.Models.PromotionMessage;
 import com.geraud.android.gps1.Models.User;
+import com.geraud.android.gps1.PromotionMessage.PromotionMessageActivity;
 import com.geraud.android.gps1.R;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -63,6 +70,53 @@ public class GeoQueries extends Service {
         mGeocoder = new Geocoder(GeoQueries.this, Locale.getDefault());
         mDatabaseReference = FirebaseDatabase.getInstance().getReference().child("USER");
         mGeoFire = new GeoFire(FirebaseDatabase.getInstance().getReference().child("LOCATION"));
+
+        //listen to Ad messages in database
+        mDatabaseReference.child(FirebaseAuth.getInstance().getCurrentUser().getPhoneNumber()).child("notification").addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+                PromotionMessage promotionMessage = dataSnapshot.getValue(PromotionMessage.class);
+                //creating intent
+                Intent intent = new Intent(GeoQueries.this, PromotionMessageActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                Bundle bundle = new Bundle();
+                bundle.putSerializable("promotionMessage", promotionMessage);
+                intent.putExtras(bundle);
+                // Creating a pending intent and wrapping our intent
+                PendingIntent pendingIntent = PendingIntent.getActivity(GeoQueries.this, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+                //show notificaton
+                PugNotification.with(GeoQueries.this)
+                        .load()
+                        .title(promotionMessage.getTitle())
+                        .message(promotionMessage.getBody())
+                        .button(R.drawable.ic_status,"View",pendingIntent)
+                        .smallIcon(R.drawable.pugnotification_ic_launcher)
+                        .flags(Notification.DEFAULT_ALL)
+                        .simple()
+                        .build();
+
+            }
+
+            @Override
+            public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Toast.makeText(GeoQueries.this, "notification service Stopped", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     //methods below
