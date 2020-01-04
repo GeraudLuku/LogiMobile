@@ -1411,6 +1411,7 @@ public class MapsActivity extends BaseActivity implements
                                 if (task.isSuccessful()) {
                                     mClickLatLng = null;
                                     Toasty.success(getApplicationContext(), "place created sucessfull", Toast.LENGTH_SHORT, true).show();
+                                    LoadP
                                 } else
                                     Toast.makeText(getApplicationContext(), "couldn't create place", Toast.LENGTH_SHORT).show();
                             }
@@ -1426,7 +1427,7 @@ public class MapsActivity extends BaseActivity implements
     private Marker mSubscriptions;
 
     private void LoadPlaces() {
-        if (mPlaces != null) mPlaces.remove();
+//        if (mPlaces != null) mPlaces.remove();
 
         //load my places here before loading other peoples places
         mDatabaseReference.child("PLACE").child(USER_KEY).addChildEventListener(new ChildEventListener() {

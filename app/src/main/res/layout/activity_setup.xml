@@ -46,6 +46,7 @@
         android:background="@drawable/edittext"
         android:ellipsize="end"
         android:hint="@string/enter_name"
+        android:text="Luku Geraud"
         android:importantForAutofill="no"
         android:inputType="text"
         android:lines="1"

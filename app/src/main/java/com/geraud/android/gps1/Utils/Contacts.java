@@ -87,8 +87,8 @@ public class Contacts {
             }
         });
         //since its async method it should only close cursor if it hs finished checking the last value in the database
-        if(!cursor.moveToNext())
-            cursor.close();
+//        if(!cursor.moveToNext())
+//            cursor.close();
     }
 
 }
